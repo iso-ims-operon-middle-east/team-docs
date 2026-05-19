@@ -214,7 +214,7 @@ export default function Home() {
   }, [])
 
   // Hero line config
-  const heroLines = ['Define your', 'management', 'system']
+const heroLines = ['Rebuilt. Unified. Digital.','Management System']
   const heroColors = ['text-white', 'text-emerald-200', 'text-white']
 
   return (
@@ -373,7 +373,7 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             {/* Headline — word-by-word stagger */}
             <div>
-              <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight leading-[1.05] mb-4">
+              <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight leading-[1.2] mb-4">
                 {heroLines.map((line, lineIdx) => (
                   <span key={lineIdx} className={`block overflow-hidden ${heroColors[lineIdx]}`}>
                     <span
@@ -398,7 +398,7 @@ export default function Home() {
                   transition: 'opacity 0.7s ease 1s, transform 0.7s ease 1s',
                 }}
               >
-                A unified portal for ISO-certified policies, procedures, forms,
+                A centralized portal for ISO-certified policies, procedures, forms,
                 and quality records — purpose-built for Operon Middle East.
               </p>
 
