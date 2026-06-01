@@ -531,7 +531,7 @@ export default function DashboardPage() {
               <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0">
                 <LockIcon className="w-4 h-4" />
               </div>
-              <span className="text-sm font-medium">Protected Pages</span>
+              <span className="text-sm font-medium">Quality Assurance</span>
             </Link>
           </nav>
 
