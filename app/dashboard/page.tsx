@@ -102,12 +102,6 @@ const FileIcon = ({ className = '' }: { className?: string }) => (
     <polyline points="14 2 14 8 20 8" />
   </svg>
 )
-const LockIcon = ({ className = '' }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-  </svg>
-)
 
 interface Certificate {
   id: string
@@ -229,7 +223,6 @@ export default function DashboardPage() {
     }
     setUserEmail(user.email || '')
 
-    // Check role from profiles table
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
@@ -527,11 +520,11 @@ export default function DashboardPage() {
               <span className="text-sm font-medium">Non-Conformance</span>
               <span className="ml-auto text-xs font-medium tabular-nums text-emerald-400/60">{ncrStats.total}</span>
             </Link>
-            <Link href="/protected-pages" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 hover:bg-emerald-800/50 text-emerald-100 transition-all">
+            <Link href="/folders" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 hover:bg-emerald-800/50 text-emerald-100 transition-all">
               <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0">
-                <LockIcon className="w-4 h-4" />
+                📁
               </div>
-              <span className="text-sm font-medium">Quality Assurance</span>
+              <span className="text-sm font-medium">Folders</span>
             </Link>
           </nav>
 
