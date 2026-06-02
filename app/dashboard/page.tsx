@@ -1,119 +1,76 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 const supabase = createClient()
 
 const CERT_BUCKET = 'ISO IMS Certificates'
-
-const TIERS = [
-  'tier-1-policies',
-  'tier-2-ims-manual',
-  'tier-3-procedures',
-  'tier-4-work-instructions',
-  'tier-5-forms',
-]
-
-const FORM_FOLDERS = [
-  'management',
-  'business-development',
-  'ehs',
-  'finance',
-  'human-resource',
-  'procurement',
-  'operations',
-  'external-documents',
-]
+const TIERS = ['tier-1-policies','tier-2-ims-manual','tier-3-procedures','tier-4-work-instructions','tier-5-forms']
+const FORM_FOLDERS = ['management','business-development','ehs','finance','human-resource','procurement','operations','external-documents']
 
 const FolderIcon = ({ className = '' }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
 )
 const AlertIcon = ({ className = '' }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
 )
 const ArrowRightIcon = ({ className = '' }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
 )
 const LogOutIcon = ({ className = '' }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
 )
 const HomeIcon = ({ className = '' }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" />
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
 )
 const AwardIcon = ({ className = '' }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <circle cx="12" cy="8" r="6" />
-    <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="8" r="6" /><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" /></svg>
 )
 const DownloadIcon = ({ className = '' }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
 )
 const EyeIcon = ({ className = '' }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-    <circle cx="12" cy="12" r="3" />
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
 )
 const TrashIcon = ({ className = '' }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <polyline points="3 6 5 6 21 6" />
-    <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6" />
-    <path d="M10 11v6" />
-    <path d="M14 11v6" />
-    <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 6 5 6 21 6" /><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" /></svg>
 )
 const PlusIcon = ({ className = '' }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
 )
 const XIcon = ({ className = '' }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
 )
 const ImageIcon = ({ className = '' }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-    <circle cx="8.5" cy="8.5" r="1.5" />
-    <polyline points="21 15 16 10 5 21" />
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
 )
 const FileIcon = ({ className = '' }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-    <polyline points="14 2 14 8 20 8" />
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
 )
 const ModulesIcon = ({ className = '' }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>
+)
+const QAIcon = ({ className = '' }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" /><rect x="9" y="3" width="6" height="4" rx="1" ry="1" /><path d="m9 12 2 2 4-4" /></svg>
 )
 
+// Dynamic module icons map
+const MODULE_ICONS: Record<string, ({ className }: { className?: string }) => React.ReactElement> = {
+  folder: FolderIcon,
+  shield: ({ className = '' }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>,
+  users: ({ className = '' }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>,
+  chart: ({ className = '' }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>,
+  file: FileIcon,
+  alert: AlertIcon,
+  settings: ({ className = '' }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>,
+}
+
+type DynamicModule = { id: string; name: string; slug: string; icon: string }
+
 interface Certificate {
-  id: string
-  name: string
-  description: string | null
-  pdf_path: string
-  preview_path: string | null
-  created_at: string
+  id: string; name: string; description: string | null; pdf_path: string; preview_path: string | null; created_at: string
 }
 
 export default function DashboardPage() {
@@ -125,6 +82,7 @@ export default function DashboardPage() {
   const [ncrStats, setNcrStats] = useState({ total: 0, open: 0, inProgress: 0 })
   const [certificates, setCertificates] = useState<Certificate[]>([])
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({})
+  const [dynamicModules, setDynamicModules] = useState<DynamicModule[]>([])
   const [showUpload, setShowUpload] = useState(false)
   const [certName, setCertName] = useState('')
   const [certDesc, setCertDesc] = useState('')
@@ -169,9 +127,8 @@ export default function DashboardPage() {
           const dx = particles[i].x - particles[j].x; const dy = particles[i].y - particles[j].y
           const distance = Math.sqrt(dx * dx + dy * dy)
           if (distance < maxDistance) {
-            const opacity = (1 - distance / maxDistance) * 0.3
             ctx.beginPath(); ctx.moveTo(particles[i].x, particles[i].y); ctx.lineTo(particles[j].x, particles[j].y)
-            ctx.strokeStyle = `rgba(110, 231, 183, ${opacity})`; ctx.lineWidth = 0.6; ctx.stroke()
+            ctx.strokeStyle = `rgba(110, 231, 183, ${(1 - distance / maxDistance) * 0.3})`; ctx.lineWidth = 0.6; ctx.stroke()
           }
         }
       }
@@ -208,6 +165,12 @@ export default function DashboardPage() {
     const { data: ncrs } = await supabase.from('ncrs').select('status')
     if (ncrs) setNcrStats({ total: ncrs.length, open: ncrs.filter(n => n.status === 'Open').length, inProgress: ncrs.filter(n => n.status === 'In Progress').length })
     await loadCertificates()
+    // Load dynamic modules for sidebar
+    try {
+      const res = await fetch('/api/modules')
+      const data = await res.json()
+      if (data.modules) setDynamicModules(data.modules)
+    } catch (e) { console.error('Failed to load modules', e) }
     setLoading(false)
   }
 
@@ -340,7 +303,7 @@ export default function DashboardPage() {
             </div>
           </Link>
 
-          <nav className="flex-1 p-3">
+          <nav className="flex-1 p-3 overflow-y-auto">
             <div className="text-[10px] font-semibold text-emerald-400/80 uppercase tracking-wider px-3 py-2">Modules</div>
             <div className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 bg-emerald-50 text-emerald-950 shadow-sm">
               <div className="w-8 h-8 rounded-md bg-emerald-600 text-white flex items-center justify-center shrink-0">
@@ -363,20 +326,36 @@ export default function DashboardPage() {
               <span className="ml-auto text-xs font-medium tabular-nums text-emerald-400/60">{ncrStats.total}</span>
             </Link>
             <Link href="/folders" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 hover:bg-emerald-800/50 text-emerald-100 transition-all">
-  <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
-      <rect x="9" y="3" width="6" height="4" rx="1" ry="1" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
-  </div>
-  <span className="text-sm font-medium">Quality Assurance</span>
-</Link>
+              <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0">
+                <QAIcon className="w-4 h-4" />
+              </div>
+              <span className="text-sm font-medium">Quality Assurance</span>
+            </Link>
+
+            {/* Dynamic modules */}
+            {dynamicModules.length > 0 && (
+              <>
+                <div className="text-[10px] font-semibold text-emerald-400/80 uppercase tracking-wider px-3 py-2 mt-2">Custom</div>
+                {dynamicModules.map((mod) => {
+                  const IconComponent = MODULE_ICONS[mod.icon] || FolderIcon
+                  return (
+                    <Link key={mod.id} href={`/modules/${mod.slug}`} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 hover:bg-emerald-800/50 text-emerald-100 transition-all">
+                      <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0">
+                        <IconComponent className="w-4 h-4" />
+                      </div>
+                      <span className="text-sm font-medium truncate">{mod.name}</span>
+                    </Link>
+                  )
+                })}
+              </>
+            )}
+
+            <div className="text-[10px] font-semibold text-emerald-400/80 uppercase tracking-wider px-3 py-2 mt-2">Admin</div>
             <Link href="/modules" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 hover:bg-emerald-800/50 text-emerald-100 transition-all">
               <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0">
                 <ModulesIcon className="w-4 h-4" />
               </div>
-              <span className="text-sm font-medium">Modules</span>
+              <span className="text-sm font-medium">Manage Modules</span>
             </Link>
           </nav>
 
@@ -407,8 +386,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between gap-6">
               <div className="text-sm text-emerald-950 font-medium">Home</div>
               <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-full text-xs font-medium ring-1 ring-emerald-600/20 shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                {accessLabel}
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />{accessLabel}
               </div>
             </div>
           </header>
@@ -433,7 +411,6 @@ export default function DashboardPage() {
                   <span className="text-sm text-emerald-700/70">{documentCount === 1 ? 'document' : 'documents'} across 5 tiers</span>
                 </div>
               </Link>
-
               <Link href="/ncr" className="bg-white rounded-2xl border border-emerald-100 p-8 text-left transition-all hover:border-emerald-300 hover:shadow-lg group block">
                 <div className="flex items-start justify-between mb-6">
                   <div className="w-14 h-14 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center"><AlertIcon className="w-7 h-7" /></div>
@@ -442,18 +419,9 @@ export default function DashboardPage() {
                 <h2 className="text-xl font-bold text-emerald-950 mb-2">Non-Conformance Reports</h2>
                 <p className="text-sm text-emerald-700/70 mb-6 leading-relaxed">Track, manage, and resolve non-conformances across the organization.</p>
                 <div className="flex items-baseline gap-4 pt-4 border-t border-emerald-50 flex-wrap">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-3xl font-bold tabular-nums text-emerald-700">{ncrStats.total}</span>
-                    <span className="text-xs text-emerald-700/70">total</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs">
-                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                    <span className="text-emerald-700/70">{ncrStats.open} open</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    <span className="text-emerald-700/70">{ncrStats.inProgress} in progress</span>
-                  </div>
+                  <div className="flex items-baseline gap-1.5"><span className="text-3xl font-bold tabular-nums text-emerald-700">{ncrStats.total}</span><span className="text-xs text-emerald-700/70">total</span></div>
+                  <div className="flex items-center gap-1.5 text-xs"><span className="w-1.5 h-1.5 rounded-full bg-rose-500" /><span className="text-emerald-700/70">{ncrStats.open} open</span></div>
+                  <div className="flex items-center gap-1.5 text-xs"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" /><span className="text-emerald-700/70">{ncrStats.inProgress} in progress</span></div>
                 </div>
               </Link>
             </div>
@@ -471,40 +439,22 @@ export default function DashboardPage() {
                   </button>
                 )}
               </div>
-
               {certificates.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {certificates.map((cert) => (
                     <div key={cert.id} className="bg-white rounded-2xl border border-emerald-100 overflow-hidden hover:border-emerald-300 hover:shadow-lg transition-all group">
                       <div className="aspect-[4/5] bg-emerald-50 border-b border-emerald-100 relative overflow-hidden">
-                        {previewUrls[cert.id] ? (
-                          <img src={previewUrls[cert.id]} alt={cert.name} className="w-full h-full object-contain p-4" />
-                        ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center text-emerald-400">
-                            <AwardIcon className="w-16 h-16 mb-2" /><span className="text-xs font-medium">No preview</span>
-                          </div>
-                        )}
-                        {isAdmin && (
-                          <button type="button" onClick={() => setDeletingCert(cert)} className="absolute top-2 right-2 p-1.5 rounded-md bg-white/90 backdrop-blur-sm border border-emerald-200 text-emerald-700 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700 transition shadow-sm opacity-0 group-hover:opacity-100" title="Delete certificate">
-                            <TrashIcon className="w-4 h-4" />
-                          </button>
-                        )}
+                        {previewUrls[cert.id] ? <img src={previewUrls[cert.id]} alt={cert.name} className="w-full h-full object-contain p-4" /> : <div className="w-full h-full flex flex-col items-center justify-center text-emerald-400"><AwardIcon className="w-16 h-16 mb-2" /><span className="text-xs font-medium">No preview</span></div>}
+                        {isAdmin && <button type="button" onClick={() => setDeletingCert(cert)} className="absolute top-2 right-2 p-1.5 rounded-md bg-white/90 backdrop-blur-sm border border-emerald-200 text-emerald-700 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700 transition shadow-sm opacity-0 group-hover:opacity-100"><TrashIcon className="w-4 h-4" /></button>}
                       </div>
                       <div className="p-5">
                         <div className="flex items-start gap-2 mb-2">
                           <div className="w-8 h-8 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0"><AwardIcon className="w-4 h-4" /></div>
-                          <div className="min-w-0 flex-1">
-                            <h3 className="text-sm font-bold text-emerald-950 leading-tight">{cert.name}</h3>
-                            {cert.description && <p className="text-xs text-emerald-700/70 mt-0.5 leading-snug">{cert.description}</p>}
-                          </div>
+                          <div className="min-w-0 flex-1"><h3 className="text-sm font-bold text-emerald-950 leading-tight">{cert.name}</h3>{cert.description && <p className="text-xs text-emerald-700/70 mt-0.5 leading-snug">{cert.description}</p>}</div>
                         </div>
                         <div className="flex gap-2 mt-4">
-                          <button type="button" onClick={() => handleViewCert(cert)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-medium rounded-lg transition border border-emerald-100">
-                            <EyeIcon className="w-3.5 h-3.5" />View
-                          </button>
-                          <button type="button" onClick={() => handleDownloadCert(cert)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-medium rounded-lg transition shadow-sm">
-                            <DownloadIcon className="w-3.5 h-3.5" />Download
-                          </button>
+                          <button type="button" onClick={() => handleViewCert(cert)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-medium rounded-lg transition border border-emerald-100"><EyeIcon className="w-3.5 h-3.5" />View</button>
+                          <button type="button" onClick={() => handleDownloadCert(cert)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-medium rounded-lg transition shadow-sm"><DownloadIcon className="w-3.5 h-3.5" />Download</button>
                         </div>
                       </div>
                     </div>
@@ -523,18 +473,9 @@ export default function DashboardPage() {
               <div className="text-xs font-mono text-emerald-700/70 mb-3" style={{ fontFamily: "'JetBrains Mono', monospace" }}>QUICK INFO</div>
               <div className="bg-white rounded-xl border border-emerald-100 p-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <div className="text-xs text-emerald-700/70 mb-1">Your role</div>
-                    <div className="text-sm font-semibold text-emerald-950 flex items-center gap-1">{isAdmin && <span className="text-amber-500">👑</span>}{roleLabel}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-emerald-700/70 mb-1">Account</div>
-                    <div className="text-sm font-semibold text-emerald-950 truncate">{userEmail}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-emerald-700/70 mb-1">Organization</div>
-                    <div className="text-sm font-semibold text-emerald-950">Operon Middle East</div>
-                  </div>
+                  <div><div className="text-xs text-emerald-700/70 mb-1">Your role</div><div className="text-sm font-semibold text-emerald-950 flex items-center gap-1">{isAdmin && <span className="text-amber-500">👑</span>}{roleLabel}</div></div>
+                  <div><div className="text-xs text-emerald-700/70 mb-1">Account</div><div className="text-sm font-semibold text-emerald-950 truncate">{userEmail}</div></div>
+                  <div><div className="text-xs text-emerald-700/70 mb-1">Organization</div><div className="text-sm font-semibold text-emerald-950">Operon Middle East</div></div>
                 </div>
               </div>
             </div>
@@ -542,9 +483,7 @@ export default function DashboardPage() {
 
           <footer className="px-8 py-4 border-t border-emerald-100 bg-white text-xs text-emerald-700/70 flex items-center justify-between relative">
             <div>© 2026 Operon Middle East — An Edgenta Company</div>
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Operational</span>
-            </div>
+            <div className="flex items-center gap-4"><span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Operational</span></div>
           </footer>
         </main>
       </div>
@@ -557,38 +496,20 @@ export default function DashboardPage() {
               <button type="button" onClick={() => { setShowUpload(false); setUploadError('') }} disabled={uploading} className="p-1.5 rounded-md text-emerald-700 hover:bg-emerald-50 transition disabled:opacity-50"><XIcon className="w-5 h-5" /></button>
             </div>
             <div className="space-y-4">
-              <div>
-                <label htmlFor="cert-name" className="block text-xs font-semibold text-emerald-800 uppercase tracking-wider mb-1.5">Certificate Name <span className="text-rose-600">*</span></label>
-                <input id="cert-name" type="text" value={certName} onChange={(e) => setCertName(e.target.value)} disabled={uploading} placeholder="e.g. ISO 9001:2015 — Quality Management" className="w-full px-3 py-2.5 bg-white border border-emerald-200 rounded-lg text-sm text-emerald-950 placeholder:text-emerald-700/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition" />
-              </div>
-              <div>
-                <label htmlFor="cert-desc" className="block text-xs font-semibold text-emerald-800 uppercase tracking-wider mb-1.5">Short Description</label>
-                <input id="cert-desc" type="text" value={certDesc} onChange={(e) => setCertDesc(e.target.value)} disabled={uploading} placeholder="e.g. Certified by Bureau Veritas" className="w-full px-3 py-2.5 bg-white border border-emerald-200 rounded-lg text-sm text-emerald-950 placeholder:text-emerald-700/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition" />
-              </div>
+              <div><label htmlFor="cert-name" className="block text-xs font-semibold text-emerald-800 uppercase tracking-wider mb-1.5">Certificate Name <span className="text-rose-600">*</span></label><input id="cert-name" type="text" value={certName} onChange={(e) => setCertName(e.target.value)} disabled={uploading} placeholder="e.g. ISO 9001:2015 — Quality Management" className="w-full px-3 py-2.5 bg-white border border-emerald-200 rounded-lg text-sm text-emerald-950 placeholder:text-emerald-700/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition" /></div>
+              <div><label htmlFor="cert-desc" className="block text-xs font-semibold text-emerald-800 uppercase tracking-wider mb-1.5">Short Description</label><input id="cert-desc" type="text" value={certDesc} onChange={(e) => setCertDesc(e.target.value)} disabled={uploading} placeholder="e.g. Certified by Bureau Veritas" className="w-full px-3 py-2.5 bg-white border border-emerald-200 rounded-lg text-sm text-emerald-950 placeholder:text-emerald-700/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition" /></div>
               <div>
                 <label className="block text-xs font-semibold text-emerald-800 uppercase tracking-wider mb-1.5">Certificate PDF <span className="text-rose-600">*</span></label>
                 <label htmlFor="pdf-input" className="block border-2 border-dashed border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50/40 rounded-lg p-4 cursor-pointer transition">
                   <input id="pdf-input" type="file" accept="application/pdf,.pdf" className="hidden" onChange={(e) => { setPdfFile(e.target.files?.[0] || null); setUploadError('') }} disabled={uploading} />
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0"><FileIcon className="w-4 h-4" /></div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-emerald-950 truncate">{pdfFile ? pdfFile.name : 'Click to choose PDF'}</div>
-                      <div className="text-xs text-emerald-700/60">{pdfFile ? `${(pdfFile.size / 1024 / 1024).toFixed(2)} MB` : 'PDF file required'}</div>
-                    </div>
-                  </div>
+                  <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0"><FileIcon className="w-4 h-4" /></div><div className="min-w-0 flex-1"><div className="text-sm font-medium text-emerald-950 truncate">{pdfFile ? pdfFile.name : 'Click to choose PDF'}</div><div className="text-xs text-emerald-700/60">{pdfFile ? `${(pdfFile.size / 1024 / 1024).toFixed(2)} MB` : 'PDF file required'}</div></div></div>
                 </label>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-emerald-800 uppercase tracking-wider mb-1.5">Preview Image <span className="text-emerald-700/60 normal-case font-normal">(optional)</span></label>
                 <label htmlFor="preview-input" className="block border-2 border-dashed border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50/40 rounded-lg p-4 cursor-pointer transition">
                   <input id="preview-input" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" className="hidden" onChange={(e) => { setPreviewFile(e.target.files?.[0] || null); setUploadError('') }} disabled={uploading} />
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0"><ImageIcon className="w-4 h-4" /></div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-emerald-950 truncate">{previewFile ? previewFile.name : 'Click to choose preview image'}</div>
-                      <div className="text-xs text-emerald-700/60">{previewFile ? `${(previewFile.size / 1024).toFixed(0)} KB` : 'PNG, JPG, or WEBP'}</div>
-                    </div>
-                  </div>
+                  <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0"><ImageIcon className="w-4 h-4" /></div><div className="min-w-0 flex-1"><div className="text-sm font-medium text-emerald-950 truncate">{previewFile ? previewFile.name : 'Click to choose preview image'}</div><div className="text-xs text-emerald-700/60">{previewFile ? `${(previewFile.size / 1024).toFixed(0)} KB` : 'PNG, JPG, or WEBP'}</div></div></div>
                 </label>
               </div>
               {uploadError && <div className="bg-rose-50 border border-rose-200 text-rose-800 text-sm p-3 rounded-lg">{uploadError}</div>}
@@ -608,10 +529,7 @@ export default function DashboardPage() {
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-emerald-100">
             <div className="flex items-start gap-4 mb-4">
               <div className="w-11 h-11 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0"><TrashIcon className="w-5 h-5" /></div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-bold text-emerald-950 mb-1">Delete certificate?</h3>
-                <p className="text-sm text-emerald-700/80">This will permanently delete <span className="font-medium text-emerald-950">{deletingCert.name}</span> and its preview. This action cannot be undone.</p>
-              </div>
+              <div className="flex-1 min-w-0"><h3 className="text-lg font-bold text-emerald-950 mb-1">Delete certificate?</h3><p className="text-sm text-emerald-700/80">This will permanently delete <span className="font-medium text-emerald-950">{deletingCert.name}</span> and its preview. This action cannot be undone.</p></div>
             </div>
             <div className="flex gap-2 justify-end mt-6">
               <button type="button" onClick={() => setDeletingCert(null)} disabled={deleting} className="px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-50 rounded-lg transition disabled:opacity-50">Cancel</button>

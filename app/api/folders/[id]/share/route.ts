@@ -4,166 +4,78 @@ import { createClient } from '@supabase/supabase-js'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createServerSideClient()
 
     const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
-    // Fetch folder by slug (the [id] param is actually the slug from the frontend)
     const { data: folder, error: folderError } = await supabase
       .from('folders')
       .select('id, name, slug, description, created_by, created_at')
-      .eq('slug', params.id)
+      .eq('slug', id)
       .single()
 
-    if (folderError || !folder) {
-      return NextResponse.json(
-        { error: 'Folder not found' },
-        { status: 404 }
-      )
-    }
+    if (folderError || !folder) return NextResponse.json({ error: 'Folder not found' }, { status: 404 })
 
-    // Check access — must be owner or have folder_access entry
     const isOwner = folder.created_by === user.id
-
     if (!isOwner) {
-      const { data: access } = await supabase
-        .from('folder_access')
-        .select('id')
-        .eq('folder_id', folder.id)
-        .eq('user_id', user.id)
-        .single()
-
-      if (!access) {
-        return NextResponse.json(
-          { error: 'Access denied' },
-          { status: 403 }
-        )
-      }
+      const { data: access } = await supabase.from('folder_access').select('id').eq('folder_id', folder.id).eq('user_id', user.id).single()
+      if (!access) return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
-    // Fetch files in this folder
     const { data: files } = await supabase
       .from('folder_files')
       .select('id, file_name, file_size, file_type, file_path, created_at')
       .eq('folder_id', folder.id)
       .order('created_at', { ascending: false })
 
-    return NextResponse.json({
-      success: true,
-      folder,
-      files: files || [],
-    })
+    return NextResponse.json({ success: true, folder, files: files || [] })
 
   } catch (error) {
     console.error('API error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createServerSideClient()
 
     const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { email, access_level } = await request.json()
+    if (!email) return NextResponse.json({ error: 'Email is required' }, { status: 400 })
 
-    if (!email) {
-      return NextResponse.json(
-        { error: 'Email is required' },
-        { status: 400 }
-      )
-    }
+    const { data: folder } = await supabase.from('folders').select('id').eq('id', id).eq('created_by', user.id).single()
+    if (!folder) return NextResponse.json({ error: 'Access denied' }, { status: 403 })
 
-    const { data: folder } = await supabase
-      .from('folders')
-      .select('id')
-      .eq('id', params.id)
-      .eq('created_by', user.id)
-      .single()
-
-    if (!folder) {
-      return NextResponse.json(
-        { error: 'Access denied' },
-        { status: 403 }
-      )
-    }
-
-    const adminSupabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
+    const adminSupabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
     const { data: users, error: usersError } = await adminSupabase.auth.admin.listUsers()
 
-    if (usersError) {
-      console.error('Error listing users:', usersError)
-      return NextResponse.json(
-        { error: 'Failed to find user' },
-        { status: 500 }
-      )
-    }
+    if (usersError) return NextResponse.json({ error: 'Failed to find user' }, { status: 500 })
 
     const targetUser = users?.users.find(u => u.email?.toLowerCase() === email.toLowerCase())
+    if (!targetUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-    if (!targetUser) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
-    }
+    const { error: accessError } = await supabase.from('folder_access').upsert({
+      folder_id: id, user_id: targetUser.id, access_level: access_level || 'view',
+    }, { onConflict: 'folder_id,user_id' })
 
-    const { error: accessError } = await supabase
-      .from('folder_access')
-      .upsert({
-        folder_id: params.id,
-        user_id: targetUser.id,
-        access_level: access_level || 'view',
-      }, {
-        onConflict: 'folder_id,user_id',
-      })
+    if (accessError) return NextResponse.json({ error: 'Failed to grant access' }, { status: 500 })
 
-    if (accessError) {
-      console.error('Access error:', accessError)
-      return NextResponse.json(
-        { error: 'Failed to grant access' },
-        { status: 500 }
-      )
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Folder shared successfully',
-    })
+    return NextResponse.json({ success: true, message: 'Folder shared successfully' })
 
   } catch (error) {
     console.error('API error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
