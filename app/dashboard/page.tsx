@@ -56,7 +56,6 @@ const QAIcon = ({ className = '' }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" /><rect x="9" y="3" width="6" height="4" rx="1" ry="1" /><path d="m9 12 2 2 4-4" /></svg>
 )
 
-// Dynamic module icons map
 const MODULE_ICONS: Record<string, ({ className }: { className?: string }) => React.ReactElement> = {
   folder: FolderIcon,
   shield: ({ className = '' }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>,
@@ -68,7 +67,6 @@ const MODULE_ICONS: Record<string, ({ className }: { className?: string }) => Re
 }
 
 type DynamicModule = { id: string; name: string; slug: string; icon: string }
-
 interface Certificate {
   id: string; name: string; description: string | null; pdf_path: string; preview_path: string | null; created_at: string
 }
@@ -97,6 +95,14 @@ export default function DashboardPage() {
   const loadingCanvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => { init() }, [])
+
+  // Load modules separately — doesn't block dashboard from showing
+  useEffect(() => {
+    fetch('/api/modules')
+      .then(r => r.json())
+      .then(data => { if (data.modules) setDynamicModules(data.modules) })
+      .catch(e => console.error('Failed to load modules', e))
+  }, [])
 
   useEffect(() => {
     if (!loading) return
@@ -149,28 +155,31 @@ export default function DashboardPage() {
     const admin = role === 'admin'
     const editor = role === 'co-admin' || (!admin && await checkIsEditor(user.email || ''))
     setIsAdmin(admin); setIsEditor(editor)
-    let docTotal = 0
-    for (const tierId of TIERS) {
-      if (tierId === 'tier-5-forms') {
-        for (const folder of FORM_FOLDERS) {
-          const { data } = await supabase.storage.from('documents').list(`${tierId}/${folder}`, { limit: 100 })
-          docTotal += (data || []).filter(d => d.name !== '.emptyFolderPlaceholder').length
+
+    // Run document count, NCR stats, and certificates in parallel
+    const [, , ] = await Promise.all([
+      (async () => {
+        let docTotal = 0
+        for (const tierId of TIERS) {
+          if (tierId === 'tier-5-forms') {
+            for (const folder of FORM_FOLDERS) {
+              const { data } = await supabase.storage.from('documents').list(`${tierId}/${folder}`, { limit: 100 })
+              docTotal += (data || []).filter(d => d.name !== '.emptyFolderPlaceholder').length
+            }
+          } else {
+            const { data } = await supabase.storage.from('documents').list(tierId, { limit: 100 })
+            docTotal += (data || []).filter(d => d.name !== '.emptyFolderPlaceholder').length
+          }
         }
-      } else {
-        const { data } = await supabase.storage.from('documents').list(tierId, { limit: 100 })
-        docTotal += (data || []).filter(d => d.name !== '.emptyFolderPlaceholder').length
-      }
-    }
-    setDocumentCount(docTotal)
-    const { data: ncrs } = await supabase.from('ncrs').select('status')
-    if (ncrs) setNcrStats({ total: ncrs.length, open: ncrs.filter(n => n.status === 'Open').length, inProgress: ncrs.filter(n => n.status === 'In Progress').length })
-    await loadCertificates()
-    // Load dynamic modules for sidebar
-    try {
-      const res = await fetch('/api/modules')
-      const data = await res.json()
-      if (data.modules) setDynamicModules(data.modules)
-    } catch (e) { console.error('Failed to load modules', e) }
+        setDocumentCount(docTotal)
+      })(),
+      (async () => {
+        const { data: ncrs } = await supabase.from('ncrs').select('status')
+        if (ncrs) setNcrStats({ total: ncrs.length, open: ncrs.filter(n => n.status === 'Open').length, inProgress: ncrs.filter(n => n.status === 'In Progress').length })
+      })(),
+      loadCertificates(),
+    ])
+
     setLoading(false)
   }
 
@@ -185,12 +194,12 @@ export default function DashboardPage() {
     const certs = (data as Certificate[]) || []
     setCertificates(certs)
     const urls: Record<string, string> = {}
-    for (const cert of certs) {
+    await Promise.all(certs.map(async (cert) => {
       if (cert.preview_path) {
         const { data: signed } = await supabase.storage.from(CERT_BUCKET).createSignedUrl(cert.preview_path, 3600)
         if (signed?.signedUrl) urls[cert.id] = signed.signedUrl
       }
-    }
+    }))
     setPreviewUrls(urls)
   }
 
@@ -306,33 +315,24 @@ export default function DashboardPage() {
           <nav className="flex-1 p-3 overflow-y-auto">
             <div className="text-[10px] font-semibold text-emerald-400/80 uppercase tracking-wider px-3 py-2">Modules</div>
             <div className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 bg-emerald-50 text-emerald-950 shadow-sm">
-              <div className="w-8 h-8 rounded-md bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                <HomeIcon className="w-4 h-4" />
-              </div>
+              <div className="w-8 h-8 rounded-md bg-emerald-600 text-white flex items-center justify-center shrink-0"><HomeIcon className="w-4 h-4" /></div>
               <span className="text-sm font-medium">Home</span>
             </div>
             <Link href="/documents" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 hover:bg-emerald-800/50 text-emerald-100 transition-all">
-              <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0">
-                <FolderIcon className="w-4 h-4" />
-              </div>
+              <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0"><FolderIcon className="w-4 h-4" /></div>
               <span className="text-sm font-medium">Document Library</span>
               <span className="ml-auto text-xs font-medium tabular-nums text-emerald-400/60">{documentCount}</span>
             </Link>
             <Link href="/ncr" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 hover:bg-emerald-800/50 text-emerald-100 transition-all">
-              <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0">
-                <AlertIcon className="w-4 h-4" />
-              </div>
+              <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0"><AlertIcon className="w-4 h-4" /></div>
               <span className="text-sm font-medium">Non-Conformance</span>
               <span className="ml-auto text-xs font-medium tabular-nums text-emerald-400/60">{ncrStats.total}</span>
             </Link>
             <Link href="/folders" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 hover:bg-emerald-800/50 text-emerald-100 transition-all">
-              <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0">
-                <QAIcon className="w-4 h-4" />
-              </div>
+              <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0"><QAIcon className="w-4 h-4" /></div>
               <span className="text-sm font-medium">Quality Assurance</span>
             </Link>
 
-            {/* Dynamic modules */}
             {dynamicModules.length > 0 && (
               <>
                 <div className="text-[10px] font-semibold text-emerald-400/80 uppercase tracking-wider px-3 py-2 mt-2">Custom</div>
@@ -340,9 +340,7 @@ export default function DashboardPage() {
                   const IconComponent = MODULE_ICONS[mod.icon] || FolderIcon
                   return (
                     <Link key={mod.id} href={`/modules/${mod.slug}`} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 hover:bg-emerald-800/50 text-emerald-100 transition-all">
-                      <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0">
-                        <IconComponent className="w-4 h-4" />
-                      </div>
+                      <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0"><IconComponent className="w-4 h-4" /></div>
                       <span className="text-sm font-medium truncate">{mod.name}</span>
                     </Link>
                   )
@@ -352,9 +350,7 @@ export default function DashboardPage() {
 
             <div className="text-[10px] font-semibold text-emerald-400/80 uppercase tracking-wider px-3 py-2 mt-2">Admin</div>
             <Link href="/modules" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 hover:bg-emerald-800/50 text-emerald-100 transition-all">
-              <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0">
-                <ModulesIcon className="w-4 h-4" />
-              </div>
+              <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0"><ModulesIcon className="w-4 h-4" /></div>
               <span className="text-sm font-medium">Manage Modules</span>
             </Link>
           </nav>

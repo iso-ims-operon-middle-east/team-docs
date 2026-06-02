@@ -314,7 +314,7 @@ export default function UploadPage() {
 
         <main className="flex-1 flex flex-col min-w-0 relative">
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
-            <img src="/operon-logo-grey.png" alt="" aria-hidden="true" className="w-[700px] max-w-[80%] opacity-[0.05]" />
+            <img src="/operon-logo-grey-landscape.png" alt="" aria-hidden="true" className="w-[700px] max-w-[80%] opacity-[0.05]" />
           </div>
 
           <header className="bg-white border-b border-emerald-100 px-8 py-4 relative">
