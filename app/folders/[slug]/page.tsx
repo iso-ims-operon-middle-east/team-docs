@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
@@ -75,12 +75,82 @@ export default function FolderPage() {
   const [uploading, setUploading] = useState(false)
   const [dragActive, setDragActive] = useState(false)
   const [error, setError] = useState('')
+  const loadingCanvasRef = useRef<HTMLCanvasElement>(null)
   const supabase = createClient()
 
   useEffect(() => {
     if (!slug) return
     fetchFolderAndFiles()
   }, [slug])
+
+  useEffect(() => {
+    if (!loading) return
+    const canvas = loadingCanvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    let animationId: number
+    let particles: Array<{ x: number; y: number; vx: number; vy: number; radius: number }> = []
+
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+    }
+    const initParticles = () => {
+      const count = Math.min(80, Math.floor((canvas.width * canvas.height) / 20000))
+      particles = []
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: (Math.random() - 0.5) * 0.4,
+          radius: Math.random() * 1.5 + 0.5,
+        })
+      }
+    }
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      particles.forEach((p) => {
+        p.x += p.vx
+        p.y += p.vy
+        if (p.x < 0 || p.x > canvas.width) p.vx *= -1
+        if (p.y < 0 || p.y > canvas.height) p.vy *= -1
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2)
+        ctx.fillStyle = 'rgba(167, 243, 208, 0.6)'
+        ctx.fill()
+      })
+      const maxDistance = 140
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x
+          const dy = particles[i].y - particles[j].y
+          const distance = Math.sqrt(dx * dx + dy * dy)
+          if (distance < maxDistance) {
+            const opacity = (1 - distance / maxDistance) * 0.3
+            ctx.beginPath()
+            ctx.moveTo(particles[i].x, particles[i].y)
+            ctx.lineTo(particles[j].x, particles[j].y)
+            ctx.strokeStyle = `rgba(110, 231, 183, ${opacity})`
+            ctx.lineWidth = 0.6
+            ctx.stroke()
+          }
+        }
+      }
+      animationId = requestAnimationFrame(animate)
+    }
+    resizeCanvas()
+    initParticles()
+    animate()
+    const onResize = () => { resizeCanvas(); initParticles() }
+    window.addEventListener('resize', onResize)
+    return () => {
+      cancelAnimationFrame(animationId)
+      window.removeEventListener('resize', onResize)
+    }
+  }, [loading])
 
   const fetchFolderAndFiles = async () => {
     try {
@@ -104,28 +174,23 @@ export default function FolderPage() {
 
   const handleUpload = async (uploadedFiles: FileList) => {
     if (!folder || !uploadedFiles.length) return
-
     setUploading(true)
     setError('')
-
     try {
       for (const file of Array.from(uploadedFiles)) {
         const formData = new FormData()
         formData.append('file', file)
         formData.append('folderId', folder.id)
-
         const response = await fetch('/api/folders/upload', {
           method: 'POST',
           body: formData,
         })
-
         if (!response.ok) {
           const data = await response.json()
           setError(data.error || 'Upload failed')
           break
         }
       }
-
       await fetchFolderAndFiles()
     } catch (err) {
       setError('Something went wrong during upload')
@@ -137,17 +202,9 @@ export default function FolderPage() {
 
   const handleDeleteFile = async (fileId: string) => {
     if (!confirm('Delete this file?')) return
-
     try {
-      const response = await fetch(`/api/folders/files/${fileId}`, {
-        method: 'DELETE',
-      })
-
-      if (!response.ok) {
-        setError('Failed to delete file')
-        return
-      }
-
+      const response = await fetch(`/api/folders/files/${fileId}`, { method: 'DELETE' })
+      if (!response.ok) { setError('Failed to delete file'); return }
       await fetchFolderAndFiles()
     } catch (err) {
       setError('Failed to delete file')
@@ -160,12 +217,8 @@ export default function FolderPage() {
       const { data, error } = await supabase.storage
         .from('folders')
         .createSignedUrl(file.file_path, 3600)
-
       if (error) throw error
-
-      if (data?.signedUrl) {
-        window.open(data.signedUrl, '_blank')
-      }
+      if (data?.signedUrl) window.open(data.signedUrl, '_blank')
     } catch (err) {
       setError('Failed to download file')
       console.error(err)
@@ -173,7 +226,56 @@ export default function FolderPage() {
   }
 
   if (loading) {
-    return <div className="p-8 text-center text-emerald-950">Loading folder...</div>
+    return (
+      <main
+        className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden"
+        style={{
+          fontFamily: "'Inter', system-ui, sans-serif",
+          background: 'radial-gradient(ellipse at top right, #0F5A35 0%, #094A2A 50%, #063B22 100%)',
+        }}
+      >
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+        <canvas ref={loadingCanvasRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }} />
+        <div className="fixed inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 1 }}>
+          <div className="absolute -top-20 -right-20 w-[600px] h-[600px] rounded-full bg-emerald-300/8 blur-3xl" />
+          <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-emerald-900/30 blur-3xl" />
+        </div>
+        <div className="relative flex flex-col items-center gap-8" style={{ zIndex: 2 }}>
+          <div className="relative w-32 h-32 flex items-center justify-center">
+            <div className="absolute inset-0 rounded-full border-2 border-emerald-300/30 animate-ping" style={{ animationDuration: '2s' }} />
+            <div className="absolute inset-2 rounded-full border-2 border-emerald-300/40 animate-ping" style={{ animationDuration: '2s', animationDelay: '0.4s' }} />
+            <div className="absolute inset-4 rounded-full border-4 border-transparent border-t-emerald-200 border-r-emerald-300 animate-spin" style={{ animationDuration: '1.5s' }} />
+            <img src="/operon-logo-white.png" alt="Operon" className="w-16 h-16 object-contain relative drop-shadow-2xl" />
+          </div>
+          <div className="text-center">
+            <div className="text-[10px] font-mono uppercase tracking-[0.3em] text-emerald-200/80 mb-2" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+              ⏤ Operon Middle East ⏤
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Quality Assurance</h1>
+          </div>
+          <div className="w-64 h-1 bg-white/10 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-emerald-400 via-emerald-200 to-emerald-400 rounded-full"
+              style={{ backgroundSize: '200% 100%', animation: 'shimmer 2s linear infinite' }}
+            />
+          </div>
+          <div className="flex items-center gap-2 text-sm text-white/80">
+            <span>Loading folder</span>
+            <span className="flex gap-1">
+              <span className="w-1 h-1 rounded-full bg-emerald-300 animate-bounce" style={{ animationDelay: '0s' }} />
+              <span className="w-1 h-1 rounded-full bg-emerald-300 animate-bounce" style={{ animationDelay: '0.15s' }} />
+              <span className="w-1 h-1 rounded-full bg-emerald-300 animate-bounce" style={{ animationDelay: '0.3s' }} />
+            </span>
+          </div>
+        </div>
+        <style jsx>{`
+          @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+          }
+        `}</style>
+      </main>
+    )
   }
 
   if (!folder) {
@@ -190,13 +292,11 @@ export default function FolderPage() {
   return (
     <div className="min-h-screen bg-emerald-50/40" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
       <div className="max-w-6xl mx-auto p-8">
-        {/* Back Button */}
         <Link href="/folders" className="inline-flex items-center gap-2 text-emerald-700 hover:text-emerald-900 mb-8 transition">
           <ArrowLeftIcon className="w-4 h-4" />
           Back to Folders
         </Link>
 
-        {/* Folder Header */}
         <div className="flex items-start gap-6 mb-10">
           <div className="w-20 h-20 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
             <FolderIcon className="w-10 h-10" />
@@ -211,7 +311,7 @@ export default function FolderPage() {
               <span>📅 Created {new Date(folder.created_at).toLocaleDateString()}</span>
             </div>
           </div>
-          <Link 
+          <Link
             href={`/folders/${folder.slug}/share`}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg shadow-md transition-all text-sm"
           >
@@ -220,29 +320,15 @@ export default function FolderPage() {
           </Link>
         </div>
 
-        {/* Upload Area */}
         <div
           className={`border-2 border-dashed rounded-2xl p-12 text-center transition-all mb-10 ${
-            dragActive
-              ? 'border-emerald-500 bg-emerald-50'
-              : 'border-emerald-200 bg-white/50'
+            dragActive ? 'border-emerald-500 bg-emerald-50' : 'border-emerald-200 bg-white/50'
           }`}
           onDragOver={(e) => { e.preventDefault(); setDragActive(true) }}
           onDragLeave={() => setDragActive(false)}
-          onDrop={(e) => {
-            e.preventDefault()
-            setDragActive(false)
-            handleUpload(e.dataTransfer.files)
-          }}
+          onDrop={(e) => { e.preventDefault(); setDragActive(false); handleUpload(e.dataTransfer.files) }}
         >
-          <input
-            type="file"
-            id="file-upload"
-            multiple
-            disabled={uploading}
-            onChange={(e) => handleUpload(e.target.files!)}
-            className="hidden"
-          />
+          <input type="file" id="file-upload" multiple disabled={uploading} onChange={(e) => handleUpload(e.target.files!)} className="hidden" />
           <label htmlFor="file-upload" className="cursor-pointer block">
             <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4 text-emerald-600">
               <UploadIcon className="w-8 h-8" />
@@ -250,20 +336,14 @@ export default function FolderPage() {
             <div className="text-lg font-bold text-emerald-950 mb-1">
               {uploading ? 'Uploading...' : 'Drop files here or click to upload'}
             </div>
-            <div className="text-sm text-emerald-700/60">
-              Drag and drop files or click to browse
-            </div>
+            <div className="text-sm text-emerald-700/60">Drag and drop files or click to browse</div>
           </label>
         </div>
 
-        {/* Error Message */}
         {error && (
-          <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-lg mb-8">
-            {error}
-          </div>
+          <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-lg mb-8">{error}</div>
         )}
 
-        {/* Files List */}
         <div>
           <div className="text-sm font-bold text-emerald-950 mb-4">Files in this folder</div>
           {files.length === 0 ? (
@@ -274,10 +354,7 @@ export default function FolderPage() {
           ) : (
             <div className="space-y-2">
               {files.map((file) => (
-                <div
-                  key={file.id}
-                  className="bg-white rounded-xl border border-emerald-100 p-4 flex items-center justify-between hover:border-emerald-300 hover:shadow-md transition"
-                >
+                <div key={file.id} className="bg-white rounded-xl border border-emerald-100 p-4 flex items-center justify-between hover:border-emerald-300 hover:shadow-md transition">
                   <div className="flex items-center gap-4 flex-1 min-w-0">
                     <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
                       <FileIcon className="w-5 h-5" />
@@ -290,18 +367,10 @@ export default function FolderPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleDownload(file)}
-                      className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-lg transition"
-                      title="Download"
-                    >
+                    <button onClick={() => handleDownload(file)} className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-lg transition" title="Download">
                       <DownloadIcon className="w-5 h-5" />
                     </button>
-                    <button
-                      onClick={() => handleDeleteFile(file.id)}
-                      className="p-2 text-rose-700 hover:bg-rose-50 rounded-lg transition"
-                      title="Delete"
-                    >
+                    <button onClick={() => handleDeleteFile(file.id)} className="p-2 text-rose-700 hover:bg-rose-50 rounded-lg transition" title="Delete">
                       <TrashIcon className="w-5 h-5" />
                     </button>
                   </div>

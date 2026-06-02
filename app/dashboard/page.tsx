@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 const supabase = createClient()
 
-const ADMIN_EMAIL = 'harlene.m@operon.co'
 const CERT_BUCKET = 'ISO IMS Certificates'
 
 const TIERS = [
@@ -102,6 +101,11 @@ const FileIcon = ({ className = '' }: { className?: string }) => (
     <polyline points="14 2 14 8 20 8" />
   </svg>
 )
+const ModulesIcon = ({ className = '' }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
+  </svg>
+)
 
 interface Certificate {
   id: string
@@ -121,7 +125,6 @@ export default function DashboardPage() {
   const [ncrStats, setNcrStats] = useState({ total: 0, open: 0, inProgress: 0 })
   const [certificates, setCertificates] = useState<Certificate[]>([])
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({})
-
   const [showUpload, setShowUpload] = useState(false)
   const [certName, setCertName] = useState('')
   const [certDesc, setCertDesc] = useState('')
@@ -129,16 +132,13 @@ export default function DashboardPage() {
   const [previewFile, setPreviewFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
-
   const [deletingCert, setDeletingCert] = useState<Certificate | null>(null)
   const [deleting, setDeleting] = useState(false)
 
   const router = useRouter()
   const loadingCanvasRef = useRef<HTMLCanvasElement>(null)
 
-  useEffect(() => {
-    init()
-  }, [])
+  useEffect(() => { init() }, [])
 
   useEffect(() => {
     if (!loading) return
@@ -146,157 +146,85 @@ export default function DashboardPage() {
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-
     let animationId: number
     let particles: Array<{ x: number; y: number; vx: number; vy: number; radius: number }> = []
-
-    const resizeCanvas = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-    }
-
+    const resizeCanvas = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight }
     const initParticles = () => {
       const count = Math.min(80, Math.floor((canvas.width * canvas.height) / 20000))
       particles = []
-      for (let i = 0; i < count; i++) {
-        particles.push({
-          x: Math.random() * canvas.width,
-          y: Math.random() * canvas.height,
-          vx: (Math.random() - 0.5) * 0.4,
-          vy: (Math.random() - 0.5) * 0.4,
-          radius: Math.random() * 1.5 + 0.5,
-        })
-      }
+      for (let i = 0; i < count; i++) particles.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4, radius: Math.random() * 1.5 + 0.5 })
     }
-
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       particles.forEach((p) => {
-        p.x += p.vx
-        p.y += p.vy
+        p.x += p.vx; p.y += p.vy
         if (p.x < 0 || p.x > canvas.width) p.vx *= -1
         if (p.y < 0 || p.y > canvas.height) p.vy *= -1
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2)
-        ctx.fillStyle = 'rgba(167, 243, 208, 0.6)'
-        ctx.fill()
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2)
+        ctx.fillStyle = 'rgba(167, 243, 208, 0.6)'; ctx.fill()
       })
       const maxDistance = 140
       for (let i = 0; i < particles.length; i++) {
         for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x
-          const dy = particles[i].y - particles[j].y
+          const dx = particles[i].x - particles[j].x; const dy = particles[i].y - particles[j].y
           const distance = Math.sqrt(dx * dx + dy * dy)
           if (distance < maxDistance) {
             const opacity = (1 - distance / maxDistance) * 0.3
-            ctx.beginPath()
-            ctx.moveTo(particles[i].x, particles[i].y)
-            ctx.lineTo(particles[j].x, particles[j].y)
-            ctx.strokeStyle = `rgba(110, 231, 183, ${opacity})`
-            ctx.lineWidth = 0.6
-            ctx.stroke()
+            ctx.beginPath(); ctx.moveTo(particles[i].x, particles[i].y); ctx.lineTo(particles[j].x, particles[j].y)
+            ctx.strokeStyle = `rgba(110, 231, 183, ${opacity})`; ctx.lineWidth = 0.6; ctx.stroke()
           }
         }
       }
       animationId = requestAnimationFrame(animate)
     }
-
-    resizeCanvas()
-    initParticles()
-    animate()
-
+    resizeCanvas(); initParticles(); animate()
     const onResize = () => { resizeCanvas(); initParticles() }
     window.addEventListener('resize', onResize)
-
-    return () => {
-      cancelAnimationFrame(animationId)
-      window.removeEventListener('resize', onResize)
-    }
+    return () => { cancelAnimationFrame(animationId); window.removeEventListener('resize', onResize) }
   }, [loading])
 
   const init = async () => {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      await supabase.auth.signOut()
-      router.push('/login')
-      return
-    }
+    if (authError || !user) { await supabase.auth.signOut(); router.push('/login'); return }
     setUserEmail(user.email || '')
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
     const role = profile?.role || 'user'
     const admin = role === 'admin'
     const editor = role === 'co-admin' || (!admin && await checkIsEditor(user.email || ''))
-
-    setIsAdmin(admin)
-    setIsEditor(editor)
-
+    setIsAdmin(admin); setIsEditor(editor)
     let docTotal = 0
     for (const tierId of TIERS) {
       if (tierId === 'tier-5-forms') {
         for (const folder of FORM_FOLDERS) {
-          const { data } = await supabase.storage
-            .from('documents')
-            .list(`${tierId}/${folder}`, { limit: 100 })
-          const docs = (data || []).filter(d => d.name !== '.emptyFolderPlaceholder')
-          docTotal += docs.length
+          const { data } = await supabase.storage.from('documents').list(`${tierId}/${folder}`, { limit: 100 })
+          docTotal += (data || []).filter(d => d.name !== '.emptyFolderPlaceholder').length
         }
       } else {
-        const { data } = await supabase.storage
-          .from('documents')
-          .list(tierId, { limit: 100 })
-        const docs = (data || []).filter(d => d.name !== '.emptyFolderPlaceholder')
-        docTotal += docs.length
+        const { data } = await supabase.storage.from('documents').list(tierId, { limit: 100 })
+        docTotal += (data || []).filter(d => d.name !== '.emptyFolderPlaceholder').length
       }
     }
     setDocumentCount(docTotal)
-
     const { data: ncrs } = await supabase.from('ncrs').select('status')
-    if (ncrs) {
-      setNcrStats({
-        total: ncrs.length,
-        open: ncrs.filter(n => n.status === 'Open').length,
-        inProgress: ncrs.filter(n => n.status === 'In Progress').length,
-      })
-    }
-
+    if (ncrs) setNcrStats({ total: ncrs.length, open: ncrs.filter(n => n.status === 'Open').length, inProgress: ncrs.filter(n => n.status === 'In Progress').length })
     await loadCertificates()
     setLoading(false)
   }
 
   const checkIsEditor = async (email: string) => {
-    const { data } = await supabase
-      .from('ncr_editors')
-      .select('email')
-      .eq('email', email)
-      .maybeSingle()
+    const { data } = await supabase.from('ncr_editors').select('email').eq('email', email).maybeSingle()
     return !!data
   }
 
   const loadCertificates = async () => {
-    const { data, error: certError } = await supabase
-      .from('certificates')
-      .select('*')
-      .order('created_at', { ascending: true })
-
-    if (certError) {
-      console.error('Error loading certificates:', certError.message)
-      return
-    }
+    const { data, error: certError } = await supabase.from('certificates').select('*').order('created_at', { ascending: true })
+    if (certError) { console.error('Error loading certificates:', certError.message); return }
     const certs = (data as Certificate[]) || []
     setCertificates(certs)
-
     const urls: Record<string, string> = {}
     for (const cert of certs) {
       if (cert.preview_path) {
-        const { data: signed } = await supabase.storage
-          .from(CERT_BUCKET)
-          .createSignedUrl(cert.preview_path, 3600)
+        const { data: signed } = await supabase.storage.from(CERT_BUCKET).createSignedUrl(cert.preview_path, 3600)
         if (signed?.signedUrl) urls[cert.id] = signed.signedUrl
       }
     }
@@ -304,17 +232,13 @@ export default function DashboardPage() {
   }
 
   const handleViewCert = async (cert: Certificate) => {
-    const { data, error } = await supabase.storage
-      .from(CERT_BUCKET)
-      .createSignedUrl(cert.pdf_path, 3600)
+    const { data, error } = await supabase.storage.from(CERT_BUCKET).createSignedUrl(cert.pdf_path, 3600)
     if (error) { alert('Could not open: ' + error.message); return }
     if (data?.signedUrl) window.open(data.signedUrl, '_blank')
   }
 
   const handleDownloadCert = async (cert: Certificate) => {
-    const { data, error } = await supabase.storage
-      .from(CERT_BUCKET)
-      .createSignedUrl(cert.pdf_path, 3600, { download: `${cert.name}.pdf` })
+    const { data, error } = await supabase.storage.from(CERT_BUCKET).createSignedUrl(cert.pdf_path, 3600, { download: `${cert.name}.pdf` })
     if (error) { alert('Could not download: ' + error.message); return }
     if (data?.signedUrl) window.open(data.signedUrl, '_blank')
   }
@@ -322,122 +246,51 @@ export default function DashboardPage() {
   const handleUploadCert = async () => {
     if (!certName.trim()) { setUploadError('Please enter a certificate name'); return }
     if (!pdfFile) { setUploadError('Please select the certificate PDF'); return }
-
-    setUploading(true)
-    setUploadError('')
-
+    setUploading(true); setUploadError('')
     const slug = certName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
     const timestamp = Date.now()
     const pdfPath = `${slug}-${timestamp}.pdf`
-
-    const { error: pdfError } = await supabase.storage
-      .from(CERT_BUCKET)
-      .upload(pdfPath, pdfFile, { cacheControl: '3600', upsert: false })
-
-    if (pdfError) {
-      setUploadError('PDF upload failed: ' + pdfError.message)
-      setUploading(false)
-      return
-    }
-
+    const { error: pdfError } = await supabase.storage.from(CERT_BUCKET).upload(pdfPath, pdfFile, { cacheControl: '3600', upsert: false })
+    if (pdfError) { setUploadError('PDF upload failed: ' + pdfError.message); setUploading(false); return }
     let previewPath: string | null = null
     if (previewFile) {
       const ext = previewFile.name.split('.').pop()?.toLowerCase() || 'png'
       previewPath = `previews/${slug}-${timestamp}.${ext}`
-      const { error: prevError } = await supabase.storage
-        .from(CERT_BUCKET)
-        .upload(previewPath, previewFile, { cacheControl: '3600', upsert: false })
-
-      if (prevError) {
-        await supabase.storage.from(CERT_BUCKET).remove([pdfPath])
-        setUploadError('Preview upload failed: ' + prevError.message)
-        setUploading(false)
-        return
-      }
+      const { error: prevError } = await supabase.storage.from(CERT_BUCKET).upload(previewPath, previewFile, { cacheControl: '3600', upsert: false })
+      if (prevError) { await supabase.storage.from(CERT_BUCKET).remove([pdfPath]); setUploadError('Preview upload failed: ' + prevError.message); setUploading(false); return }
     }
-
-    const { error: insertError } = await supabase
-      .from('certificates')
-      .insert({
-        name: certName.trim(),
-        description: certDesc.trim() || null,
-        pdf_path: pdfPath,
-        preview_path: previewPath,
-      })
-
+    const { error: insertError } = await supabase.from('certificates').insert({ name: certName.trim(), description: certDesc.trim() || null, pdf_path: pdfPath, preview_path: previewPath })
     if (insertError) {
-      const toRemove = [pdfPath]
-      if (previewPath) toRemove.push(previewPath)
+      const toRemove = [pdfPath]; if (previewPath) toRemove.push(previewPath)
       await supabase.storage.from(CERT_BUCKET).remove(toRemove)
-      setUploadError('Database insert failed: ' + insertError.message)
-      setUploading(false)
-      return
+      setUploadError('Database insert failed: ' + insertError.message); setUploading(false); return
     }
-
-    setCertName('')
-    setCertDesc('')
-    setPdfFile(null)
-    setPreviewFile(null)
-    setShowUpload(false)
-    setUploading(false)
+    setCertName(''); setCertDesc(''); setPdfFile(null); setPreviewFile(null); setShowUpload(false); setUploading(false)
     await loadCertificates()
   }
 
   const handleDeleteCert = async () => {
     if (!deletingCert || !isAdmin) return
     setDeleting(true)
-
     const toRemove = [deletingCert.pdf_path]
     if (deletingCert.preview_path) toRemove.push(deletingCert.preview_path)
-    const { error: removeError } = await supabase.storage
-      .from(CERT_BUCKET)
-      .remove(toRemove)
-    if (removeError) console.error('Storage cleanup error:', removeError.message)
-
-    const { error: dbError } = await supabase
-      .from('certificates')
-      .delete()
-      .eq('id', deletingCert.id)
-
-    if (dbError) {
-      alert('Could not delete: ' + dbError.message)
-      setDeleting(false)
-      return
-    }
-
-    setDeletingCert(null)
-    setDeleting(false)
+    await supabase.storage.from(CERT_BUCKET).remove(toRemove)
+    const { error: dbError } = await supabase.from('certificates').delete().eq('id', deletingCert.id)
+    if (dbError) { alert('Could not delete: ' + dbError.message); setDeleting(false); return }
+    setDeletingCert(null); setDeleting(false)
     await loadCertificates()
   }
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
-  }
-
-  const getGreetingName = () => {
-    if (!userEmail) return 'there'
-    const name = userEmail.split('@')[0]
-    return name.charAt(0).toUpperCase() + name.slice(1)
-  }
+  const handleSignOut = async () => { await supabase.auth.signOut(); router.push('/') }
+  const getGreetingName = () => { if (!userEmail) return 'there'; const name = userEmail.split('@')[0]; return name.charAt(0).toUpperCase() + name.slice(1) }
 
   const roleLabel = isAdmin ? 'Administrator' : isEditor ? 'Editor' : 'Viewer'
   const accessLabel = isAdmin ? 'Admin access' : isEditor ? 'Edit access' : 'Viewer access'
-  const roleDescription = isAdmin
-    ? 'You have full access — upload documents, edit and delete NCRs.'
-    : isEditor
-    ? 'You can view and download documents, and create or edit NCRs.'
-    : 'You can view and download documents, and view NCR reports.'
+  const roleDescription = isAdmin ? 'You have full access — upload documents, edit and delete NCRs.' : isEditor ? 'You can view and download documents, and create or edit NCRs.' : 'You can view and download documents, and view NCR reports.'
 
   if (loading) {
     return (
-      <main
-        className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden"
-        style={{
-          fontFamily: "'Inter', system-ui, sans-serif",
-          background: 'radial-gradient(ellipse at top right, #0F5A35 0%, #094A2A 50%, #063B22 100%)',
-        }}
-      >
+      <main className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden" style={{ fontFamily: "'Inter', system-ui, sans-serif", background: 'radial-gradient(ellipse at top right, #0F5A35 0%, #094A2A 50%, #063B22 100%)' }}>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
         <canvas ref={loadingCanvasRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }} />
         <div className="fixed inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 1 }}>
@@ -452,16 +305,11 @@ export default function DashboardPage() {
             <img src="/operon-logo-white.png" alt="Operon" className="w-16 h-16 object-contain relative drop-shadow-2xl" />
           </div>
           <div className="text-center">
-            <div className="text-[10px] font-mono uppercase tracking-[0.3em] text-emerald-200/80 mb-2" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-              ⏤ Operon Middle East ⏤
-            </div>
+            <div className="text-[10px] font-mono uppercase tracking-[0.3em] text-emerald-200/80 mb-2" style={{ fontFamily: "'JetBrains Mono', monospace" }}>⏤ Operon Middle East ⏤</div>
             <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">ISO IMS Portal</h1>
           </div>
           <div className="w-64 h-1 bg-white/10 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-emerald-400 via-emerald-200 to-emerald-400 rounded-full"
-              style={{ backgroundSize: '200% 100%', animation: 'shimmer 2s linear infinite' }}
-            />
+            <div className="h-full bg-gradient-to-r from-emerald-400 via-emerald-200 to-emerald-400 rounded-full" style={{ backgroundSize: '200% 100%', animation: 'shimmer 2s linear infinite' }} />
           </div>
           <div className="flex items-center gap-2 text-sm text-white/80">
             <span>Loading your dashboard</span>
@@ -472,12 +320,7 @@ export default function DashboardPage() {
             </span>
           </div>
         </div>
-        <style jsx>{`
-          @keyframes shimmer {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-          }
-        `}</style>
+        <style jsx>{`@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
       </main>
     )
   }
@@ -485,7 +328,6 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-emerald-50/40 text-emerald-950" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-
       <div className="flex min-h-screen">
         <aside className="w-72 bg-emerald-900 text-emerald-50 flex flex-col">
           <Link href="/about" className="p-6 border-b border-emerald-800/60 hover:bg-emerald-800/30 transition-all block">
@@ -521,10 +363,20 @@ export default function DashboardPage() {
               <span className="ml-auto text-xs font-medium tabular-nums text-emerald-400/60">{ncrStats.total}</span>
             </Link>
             <Link href="/folders" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 hover:bg-emerald-800/50 text-emerald-100 transition-all">
+  <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+      <rect x="9" y="3" width="6" height="4" rx="1" ry="1" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  </div>
+  <span className="text-sm font-medium">Quality Assurance</span>
+</Link>
+            <Link href="/modules" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 hover:bg-emerald-800/50 text-emerald-100 transition-all">
               <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0">
-                📁
+                <ModulesIcon className="w-4 h-4" />
               </div>
-              <span className="text-sm font-medium">Quality Assurance</span>
+              <span className="text-sm font-medium">Modules</span>
             </Link>
           </nav>
 
@@ -551,7 +403,6 @@ export default function DashboardPage() {
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
             <img src="/operon-logo-grey.png" alt="" aria-hidden="true" className="w-[700px] max-w-[80%] opacity-[0.05]" />
           </div>
-
           <header className="bg-white border-b border-emerald-100 px-8 py-4 relative">
             <div className="flex items-center justify-between gap-6">
               <div className="text-sm text-emerald-950 font-medium">Home</div>
@@ -572,15 +423,11 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
               <Link href="/documents" className="bg-white rounded-2xl border border-emerald-100 p-8 text-left transition-all hover:border-emerald-300 hover:shadow-lg group block">
                 <div className="flex items-start justify-between mb-6">
-                  <div className="w-14 h-14 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
-                    <FolderIcon className="w-7 h-7" />
-                  </div>
+                  <div className="w-14 h-14 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center"><FolderIcon className="w-7 h-7" /></div>
                   <ArrowRightIcon className="w-5 h-5 text-emerald-300 group-hover:text-emerald-700 group-hover:translate-x-1 transition-all" />
                 </div>
                 <h2 className="text-xl font-bold text-emerald-950 mb-2">Document Library</h2>
-                <p className="text-sm text-emerald-700/70 mb-6 leading-relaxed">
-                  Access policies, procedures, manuals, work instructions, and forms organized in five tiers.
-                </p>
+                <p className="text-sm text-emerald-700/70 mb-6 leading-relaxed">Access policies, procedures, manuals, work instructions, and forms organized in five tiers.</p>
                 <div className="flex items-baseline gap-2 pt-4 border-t border-emerald-50">
                   <span className="text-3xl font-bold tabular-nums text-emerald-700">{documentCount}</span>
                   <span className="text-sm text-emerald-700/70">{documentCount === 1 ? 'document' : 'documents'} across 5 tiers</span>
@@ -589,15 +436,11 @@ export default function DashboardPage() {
 
               <Link href="/ncr" className="bg-white rounded-2xl border border-emerald-100 p-8 text-left transition-all hover:border-emerald-300 hover:shadow-lg group block">
                 <div className="flex items-start justify-between mb-6">
-                  <div className="w-14 h-14 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
-                    <AlertIcon className="w-7 h-7" />
-                  </div>
+                  <div className="w-14 h-14 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center"><AlertIcon className="w-7 h-7" /></div>
                   <ArrowRightIcon className="w-5 h-5 text-emerald-300 group-hover:text-emerald-700 group-hover:translate-x-1 transition-all" />
                 </div>
                 <h2 className="text-xl font-bold text-emerald-950 mb-2">Non-Conformance Reports</h2>
-                <p className="text-sm text-emerald-700/70 mb-6 leading-relaxed">
-                  Track, manage, and resolve non-conformances across the organization.
-                </p>
+                <p className="text-sm text-emerald-700/70 mb-6 leading-relaxed">Track, manage, and resolve non-conformances across the organization.</p>
                 <div className="flex items-baseline gap-4 pt-4 border-t border-emerald-50 flex-wrap">
                   <div className="flex items-baseline gap-1.5">
                     <span className="text-3xl font-bold tabular-nums text-emerald-700">{ncrStats.total}</span>
@@ -623,13 +466,8 @@ export default function DashboardPage() {
                   <p className="text-sm text-emerald-700/70 mt-1">Operon Middle East's accredited management system certifications.</p>
                 </div>
                 {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={() => setShowUpload(true)}
-                    className="flex items-center gap-2 px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-medium rounded-lg shadow-sm transition shrink-0"
-                  >
-                    <PlusIcon className="w-4 h-4" />
-                    Add Certificate
+                  <button type="button" onClick={() => setShowUpload(true)} className="flex items-center gap-2 px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-medium rounded-lg shadow-sm transition shrink-0">
+                    <PlusIcon className="w-4 h-4" />Add Certificate
                   </button>
                 )}
               </div>
@@ -643,49 +481,29 @@ export default function DashboardPage() {
                           <img src={previewUrls[cert.id]} alt={cert.name} className="w-full h-full object-contain p-4" />
                         ) : (
                           <div className="w-full h-full flex flex-col items-center justify-center text-emerald-400">
-                            <AwardIcon className="w-16 h-16 mb-2" />
-                            <span className="text-xs font-medium">No preview</span>
+                            <AwardIcon className="w-16 h-16 mb-2" /><span className="text-xs font-medium">No preview</span>
                           </div>
                         )}
                         {isAdmin && (
-                          <button
-                            type="button"
-                            onClick={() => setDeletingCert(cert)}
-                            className="absolute top-2 right-2 p-1.5 rounded-md bg-white/90 backdrop-blur-sm border border-emerald-200 text-emerald-700 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700 transition shadow-sm opacity-0 group-hover:opacity-100"
-                            title="Delete certificate"
-                          >
+                          <button type="button" onClick={() => setDeletingCert(cert)} className="absolute top-2 right-2 p-1.5 rounded-md bg-white/90 backdrop-blur-sm border border-emerald-200 text-emerald-700 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700 transition shadow-sm opacity-0 group-hover:opacity-100" title="Delete certificate">
                             <TrashIcon className="w-4 h-4" />
                           </button>
                         )}
                       </div>
                       <div className="p-5">
                         <div className="flex items-start gap-2 mb-2">
-                          <div className="w-8 h-8 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                            <AwardIcon className="w-4 h-4" />
-                          </div>
+                          <div className="w-8 h-8 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0"><AwardIcon className="w-4 h-4" /></div>
                           <div className="min-w-0 flex-1">
                             <h3 className="text-sm font-bold text-emerald-950 leading-tight">{cert.name}</h3>
-                            {cert.description && (
-                              <p className="text-xs text-emerald-700/70 mt-0.5 leading-snug">{cert.description}</p>
-                            )}
+                            {cert.description && <p className="text-xs text-emerald-700/70 mt-0.5 leading-snug">{cert.description}</p>}
                           </div>
                         </div>
                         <div className="flex gap-2 mt-4">
-                          <button
-                            type="button"
-                            onClick={() => handleViewCert(cert)}
-                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-medium rounded-lg transition border border-emerald-100"
-                          >
-                            <EyeIcon className="w-3.5 h-3.5" />
-                            View
+                          <button type="button" onClick={() => handleViewCert(cert)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-medium rounded-lg transition border border-emerald-100">
+                            <EyeIcon className="w-3.5 h-3.5" />View
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDownloadCert(cert)}
-                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-medium rounded-lg transition shadow-sm"
-                          >
-                            <DownloadIcon className="w-3.5 h-3.5" />
-                            Download
+                          <button type="button" onClick={() => handleDownloadCert(cert)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-medium rounded-lg transition shadow-sm">
+                            <DownloadIcon className="w-3.5 h-3.5" />Download
                           </button>
                         </div>
                       </div>
@@ -694,13 +512,9 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-dashed border-emerald-200 p-12 text-center">
-                  <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4 text-emerald-600">
-                    <AwardIcon className="w-5 h-5" />
-                  </div>
+                  <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4 text-emerald-600"><AwardIcon className="w-5 h-5" /></div>
                   <div className="text-sm font-medium text-emerald-950 mb-1">No certificates yet</div>
-                  <div className="text-xs text-emerald-700/60">
-                    {isAdmin ? 'Click "Add Certificate" to upload your first ISO certification.' : 'ISO certificates will appear here once published by an administrator.'}
-                  </div>
+                  <div className="text-xs text-emerald-700/60">{isAdmin ? 'Click "Add Certificate" to upload your first ISO certification.' : 'ISO certificates will appear here once published by an administrator.'}</div>
                 </div>
               )}
             </div>
@@ -711,10 +525,7 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <div className="text-xs text-emerald-700/70 mb-1">Your role</div>
-                    <div className="text-sm font-semibold text-emerald-950 flex items-center gap-1">
-                      {isAdmin && <span className="text-amber-500">👑</span>}
-                      {roleLabel}
-                    </div>
+                    <div className="text-sm font-semibold text-emerald-950 flex items-center gap-1">{isAdmin && <span className="text-amber-500">👑</span>}{roleLabel}</div>
                   </div>
                   <div>
                     <div className="text-xs text-emerald-700/70 mb-1">Account</div>
@@ -732,10 +543,7 @@ export default function DashboardPage() {
           <footer className="px-8 py-4 border-t border-emerald-100 bg-white text-xs text-emerald-700/70 flex items-center justify-between relative">
             <div>© 2026 Operon Middle East — An Edgenta Company</div>
             <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                Operational
-              </span>
+              <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Operational</span>
             </div>
           </footer>
         </main>
@@ -745,13 +553,8 @@ export default function DashboardPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-emerald-950/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-emerald-100 max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between mb-5">
-              <div>
-                <h3 className="text-lg font-bold text-emerald-950">Add ISO Certificate</h3>
-                <p className="text-sm text-emerald-700/70">Upload a new accredited certification</p>
-              </div>
-              <button type="button" onClick={() => { setShowUpload(false); setUploadError('') }} disabled={uploading} className="p-1.5 rounded-md text-emerald-700 hover:bg-emerald-50 transition disabled:opacity-50">
-                <XIcon className="w-5 h-5" />
-              </button>
+              <div><h3 className="text-lg font-bold text-emerald-950">Add ISO Certificate</h3><p className="text-sm text-emerald-700/70">Upload a new accredited certification</p></div>
+              <button type="button" onClick={() => { setShowUpload(false); setUploadError('') }} disabled={uploading} className="p-1.5 rounded-md text-emerald-700 hover:bg-emerald-50 transition disabled:opacity-50"><XIcon className="w-5 h-5" /></button>
             </div>
             <div className="space-y-4">
               <div>
@@ -793,7 +596,7 @@ export default function DashboardPage() {
             <div className="flex gap-2 justify-end mt-6 pt-4 border-t border-emerald-100">
               <button type="button" onClick={() => { setShowUpload(false); setUploadError('') }} disabled={uploading} className="px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-50 rounded-lg transition disabled:opacity-50">Cancel</button>
               <button type="button" onClick={handleUploadCert} disabled={uploading || !certName.trim() || !pdfFile} className="px-4 py-2 text-sm font-medium bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-                {uploading ? (<><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Uploading…</>) : (<><PlusIcon className="w-4 h-4" />Add Certificate</>)}
+                {uploading ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Uploading…</> : <><PlusIcon className="w-4 h-4" />Add Certificate</>}
               </button>
             </div>
           </div>
@@ -813,7 +616,7 @@ export default function DashboardPage() {
             <div className="flex gap-2 justify-end mt-6">
               <button type="button" onClick={() => setDeletingCert(null)} disabled={deleting} className="px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-50 rounded-lg transition disabled:opacity-50">Cancel</button>
               <button type="button" onClick={handleDeleteCert} disabled={deleting} className="px-4 py-2 text-sm font-medium bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition shadow-sm disabled:opacity-50 flex items-center gap-2">
-                {deleting ? (<><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Deleting…</>) : (<><TrashIcon className="w-4 h-4" />Delete</>)}
+                {deleting ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Deleting…</> : <><TrashIcon className="w-4 h-4" />Delete</>}
               </button>
             </div>
           </div>

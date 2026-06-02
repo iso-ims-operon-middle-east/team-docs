@@ -4,9 +4,10 @@ import { createClient } from '@supabase/supabase-js'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createServerSideClient()
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -18,11 +19,11 @@ export async function GET(
       )
     }
 
-    // Fetch folder by slug (the [id] param is actually the slug from the frontend)
+    // Fetch folder by slug
     const { data: folder, error: folderError } = await supabase
       .from('folders')
       .select('id, name, slug, description, created_by, created_at')
-      .eq('slug', params.id)
+      .eq('slug', id)
       .single()
 
     if (folderError || !folder) {
@@ -75,9 +76,10 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createServerSideClient()
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -101,7 +103,7 @@ export async function POST(
     const { data: folder } = await supabase
       .from('folders')
       .select('id')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('created_by', user.id)
       .single()
 
@@ -120,7 +122,6 @@ export async function POST(
     const { data: users, error: usersError } = await adminSupabase.auth.admin.listUsers()
 
     if (usersError) {
-      console.error('Error listing users:', usersError)
       return NextResponse.json(
         { error: 'Failed to find user' },
         { status: 500 }
@@ -139,7 +140,7 @@ export async function POST(
     const { error: accessError } = await supabase
       .from('folder_access')
       .upsert({
-        folder_id: params.id,
+        folder_id: id,
         user_id: targetUser.id,
         access_level: access_level || 'view',
       }, {
@@ -147,7 +148,6 @@ export async function POST(
       })
 
     if (accessError) {
-      console.error('Access error:', accessError)
       return NextResponse.json(
         { error: 'Failed to grant access' },
         { status: 500 }
