@@ -96,7 +96,6 @@ export default function DashboardPage() {
 
   useEffect(() => { init() }, [])
 
-  // Load modules separately — doesn't block dashboard from showing
   useEffect(() => {
     fetch('/api/modules')
       .then(r => r.json())
@@ -156,7 +155,6 @@ export default function DashboardPage() {
     const editor = role === 'co-admin' || (!admin && await checkIsEditor(user.email || ''))
     setIsAdmin(admin); setIsEditor(editor)
 
-    // Run document count, NCR stats, and certificates in parallel
     await Promise.all([
       (async () => {
         let docTotal = 0
@@ -302,7 +300,9 @@ export default function DashboardPage() {
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
       <div className="flex min-h-screen">
         <aside className="w-72 bg-emerald-900 text-emerald-50 flex flex-col">
-          <Link href="/" className="p-6 border-b border-emerald-800/60 hover:bg-emerald-800/30 transition-all block">
+
+          {/* ✅ CHANGED: href="/" → href="/about" */}
+          <Link href="/about" className="p-6 border-b border-emerald-800/60 hover:bg-emerald-800/30 transition-all block">
             <div className="flex items-center gap-3">
               <img src="/operon-logo-green.png" alt="Operon" className="w-9 h-9 rounded-lg object-contain bg-white p-1" />
               <div>

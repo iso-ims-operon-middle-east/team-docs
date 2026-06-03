@@ -82,8 +82,8 @@ export default function AboutPage() {
         <div className="mb-10">
           <div className="text-xs font-mono text-emerald-700/70 mb-2">STANDARDS</div>
           <h2 className="text-2xl font-bold text-emerald-950 mb-6">ISO Certifications</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {['ISO 9001:2015', 'ISO 14001:2015', 'ISO 45001:2018', 'ISO 55001:2014'].map((std) => (
+          <div className="grid grid-cols-3 gap-4">
+            {['ISO 9001:2015', 'ISO 14001:2015', 'ISO 45001:2018'].map((std) => (
               <div key={std} className="bg-white rounded-xl border border-emerald-100 p-4 text-center hover:border-emerald-300 transition">
                 <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto mb-2">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
@@ -101,12 +101,11 @@ export default function AboutPage() {
           <img src="/operon-logo-green.png" alt="Operon" className="w-16 h-16 object-contain shrink-0" />
           <div className="flex-1">
             <h3 className="text-lg font-bold text-emerald-950 mb-1">Operon Middle East</h3>
-            <p className="text-sm text-emerald-700/70 mb-3">An Edgenta Company — providing integrated facilities management and asset management solutions across the Middle East region.</p>
+            <p className="text-sm text-emerald-700/70 mb-3">An Edgenta Company — providing integrated facilities management solutions across the Middle East region.</p>
             <div className="flex items-center gap-4 text-xs text-emerald-700/60">
-              <span>🏢 Facilities Management</span>
-              <span>🔧 Asset Management</span>
-              <span>✅ ISO Certified</span>
-            </div>
+  <span>Facilities Management</span>
+  <span>ISO Certified</span>
+</div>
           </div>
           <div className="text-right shrink-0">
             <div className="text-xs text-emerald-700/60 mb-1">Portal Version</div>
