@@ -1,22 +1,24 @@
 'use client'
 
 import Link from 'next/link'
+import { Inter } from 'next/font/google'
+
+const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800'] })
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-emerald-50/40" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <div className={`${inter.className} min-h-screen bg-emerald-50/40`}>
 
       {/* Header */}
       <div className="bg-emerald-900 text-white">
         <div className="max-w-5xl mx-auto px-8 py-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <Link href="/about" className="flex items-center gap-4 hover:opacity-80 transition">
             <img src="/operon-logo-white.png" alt="Operon" className="w-10 h-10 object-contain" />
             <div>
               <div className="font-bold text-lg leading-tight">ISO IMS Portal</div>
               <div className="text-xs text-emerald-300">Operon Middle East</div>
             </div>
-          </div>
+          </Link>
           <Link href="/dashboard" className="flex items-center gap-2 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition">
             ← Back to Dashboard
           </Link>
@@ -31,7 +33,7 @@ export default function AboutPage() {
             <img src="/operon-logo-grey-landscape.png" alt="" className="w-full h-full object-contain" />
           </div>
           <div className="relative">
-            <div className="text-xs font-mono uppercase tracking-[0.3em] text-emerald-300 mb-3" style={{ fontFamily: "'JetBrains Mono', monospace" }}>⏤ Operon Middle East ⏤</div>
+            <div className="text-xs font-mono uppercase tracking-[0.3em] text-emerald-300 mb-3">⏤ Operon Middle East ⏤</div>
             <h1 className="text-4xl font-bold mb-4 tracking-tight">ISO IMS Portal</h1>
             <p className="text-emerald-100 text-lg leading-relaxed max-w-2xl">
               An integrated management system platform for Operon Middle East — designed to streamline document control, non-conformance tracking, and quality assurance operations.
@@ -41,7 +43,7 @@ export default function AboutPage() {
 
         {/* Modules */}
         <div className="mb-10">
-          <div className="text-xs font-mono text-emerald-700/70 mb-2" style={{ fontFamily: "'JetBrains Mono', monospace" }}>MODULES</div>
+          <div className="text-xs font-mono text-emerald-700/70 mb-2">MODULES</div>
           <h2 className="text-2xl font-bold text-emerald-950 mb-6">What's inside</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div className="bg-white rounded-2xl border border-emerald-100 p-6 hover:border-emerald-300 hover:shadow-md transition">
@@ -78,7 +80,7 @@ export default function AboutPage() {
 
         {/* Certifications */}
         <div className="mb-10">
-          <div className="text-xs font-mono text-emerald-700/70 mb-2" style={{ fontFamily: "'JetBrains Mono', monospace" }}>STANDARDS</div>
+          <div className="text-xs font-mono text-emerald-700/70 mb-2">STANDARDS</div>
           <h2 className="text-2xl font-bold text-emerald-950 mb-6">ISO Certifications</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {['ISO 9001:2015', 'ISO 14001:2015', 'ISO 45001:2018', 'ISO 55001:2014'].map((std) => (
@@ -119,6 +121,7 @@ export default function AboutPage() {
         <div>© 2026 Operon Middle East — An Edgenta Company</div>
         <Link href="/dashboard" className="text-emerald-700 hover:text-emerald-900 font-medium transition">Back to Dashboard →</Link>
       </footer>
+
     </div>
   )
 }
