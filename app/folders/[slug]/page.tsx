@@ -60,6 +60,12 @@ const ArrowRightIcon = ({ className = '' }: { className?: string }) => (
     <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
   </svg>
 )
+const PencilIcon = ({ className = '' }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+  </svg>
+)
 
 type Folder = { id: string; name: string; slug: string; description: string | null; created_by: string; created_at: string; parent_id: string | null }
 type SubFolder = { id: string; name: string; slug: string; description: string | null; created_at: string }
@@ -100,6 +106,7 @@ export default function FolderPage() {
   const [dragActive, setDragActive] = useState(false)
   const [error, setError] = useState('')
 
+  // New subfolder
   const [showNewSubfolder, setShowNewSubfolder] = useState(false)
   const [subfolderName, setSubfolderName] = useState('')
   const [subfolderSlug, setSubfolderSlug] = useState('')
@@ -107,6 +114,17 @@ export default function FolderPage() {
   const [creatingSubfolder, setCreatingSubfolder] = useState(false)
   const [subfolderError, setSubfolderError] = useState('')
 
+  // Delete subfolder
+  const [deletingSubfolder, setDeletingSubfolder] = useState<SubFolder | null>(null)
+  const [deletingSubfolderBusy, setDeletingSubfolderBusy] = useState(false)
+
+  // Rename subfolder
+  const [renamingSubfolder, setRenamingSubfolder] = useState<SubFolder | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+  const [renamingBusy, setRenamingBusy] = useState(false)
+  const [renameError, setRenameError] = useState('')
+
+  // Viewer
   const [viewerUrl, setViewerUrl] = useState<string | null>(null)
   const [viewerFile, setViewerFile] = useState<FileItem | null>(null)
   const [viewerLoading, setViewerLoading] = useState(false)
@@ -186,6 +204,35 @@ export default function FolderPage() {
       await fetchFolderAndFiles()
     } catch (err) { setSubfolderError('Something went wrong'); console.error(err) }
     finally { setCreatingSubfolder(false) }
+  }
+
+  const handleDeleteSubfolder = async () => {
+    if (!deletingSubfolder) return
+    setDeletingSubfolderBusy(true)
+    try {
+      const response = await fetch(`/api/folders/${deletingSubfolder.id}/manage`, { method: 'DELETE' })
+      if (!response.ok) { setError('Failed to delete subfolder'); setDeletingSubfolderBusy(false); return }
+      setDeletingSubfolder(null)
+      await fetchFolderAndFiles()
+    } catch (err) { setError('Something went wrong'); console.error(err) }
+    finally { setDeletingSubfolderBusy(false) }
+  }
+
+  const handleRenameSubfolder = async () => {
+    if (!renamingSubfolder || !renameValue.trim()) return
+    setRenamingBusy(true); setRenameError('')
+    try {
+      const response = await fetch(`/api/folders/${renamingSubfolder.id}/manage`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: renameValue.trim() }),
+      })
+      const data = await response.json()
+      if (!response.ok) { setRenameError(data.error || 'Failed to rename'); setRenamingBusy(false); return }
+      setRenamingSubfolder(null); setRenameValue('')
+      await fetchFolderAndFiles()
+    } catch (err) { setRenameError('Something went wrong'); console.error(err) }
+    finally { setRenamingBusy(false) }
   }
 
   const handleUpload = async (uploadedFiles: FileList) => {
@@ -309,17 +356,12 @@ export default function FolderPage() {
   return (
     <div className="min-h-screen bg-emerald-50/40" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
       <div className="max-w-6xl mx-auto p-8">
-
-        {/* Hidden file input — used by Upload File button */}
         <input type="file" id="file-upload" multiple disabled={uploading} onChange={(e) => handleUpload(e.target.files!)} className="hidden" />
 
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-emerald-700 mb-6 flex-wrap">
           <Link href="/folders" className="hover:text-emerald-900 transition">Folders</Link>
-          {parentFolder && (
-            <><span className="text-emerald-400">/</span>
-            <Link href={`/folders/${parentFolder.slug}`} className="hover:text-emerald-900 transition">{parentFolder.name}</Link></>
-          )}
+          {parentFolder && (<><span className="text-emerald-400">/</span><Link href={`/folders/${parentFolder.slug}`} className="hover:text-emerald-900 transition">{parentFolder.name}</Link></>)}
           <span className="text-emerald-400">/</span>
           <span className="text-emerald-950 font-medium">{folder.name}</span>
         </div>
@@ -360,8 +402,7 @@ export default function FolderPage() {
             <div className="text-sm font-bold text-emerald-950">Subfolders</div>
             <div className="flex items-center gap-2">
               <label htmlFor="file-upload" className={`flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-medium rounded-lg transition cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
-                <UploadIcon className="w-4 h-4" />
-                {uploading ? 'Uploading…' : 'Upload File'}
+                <UploadIcon className="w-4 h-4" />{uploading ? 'Uploading…' : 'Upload File'}
               </label>
               <button type="button" onClick={() => { setShowNewSubfolder(true); setSubfolderError('') }}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-medium rounded-lg transition">
@@ -377,17 +418,31 @@ export default function FolderPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {subfolders.map((sub) => (
-                <Link key={sub.id} href={`/folders/${sub.slug}`}
-                  className="bg-white rounded-xl border border-emerald-100 p-5 hover:border-emerald-300 hover:shadow-md transition group flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                    <FolderIcon className="w-5 h-5" />
+                <div key={sub.id} className="relative bg-white rounded-xl border border-emerald-100 p-5 hover:border-emerald-300 hover:shadow-md transition group">
+                  {/* Action buttons */}
+                  <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button type="button"
+                      onClick={(e) => { e.preventDefault(); setRenamingSubfolder(sub); setRenameValue(sub.name); setRenameError('') }}
+                      className="p-1.5 rounded-md bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 transition shadow-sm" title="Rename">
+                      <PencilIcon className="w-3.5 h-3.5" />
+                    </button>
+                    <button type="button"
+                      onClick={(e) => { e.preventDefault(); setDeletingSubfolder(sub) }}
+                      className="p-1.5 rounded-md bg-white border border-emerald-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition shadow-sm" title="Delete">
+                      <TrashIcon className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-emerald-950 truncate">{sub.name}</div>
-                    {sub.description && <div className="text-xs text-emerald-700/60 truncate">{sub.description}</div>}
-                  </div>
-                  <ArrowRightIcon className="w-4 h-4 text-emerald-300 group-hover:text-emerald-700 group-hover:translate-x-1 transition-all shrink-0" />
-                </Link>
+                  <Link href={`/folders/${sub.slug}`} className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                      <FolderIcon className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-emerald-950 truncate pr-14">{sub.name}</div>
+                      {sub.description && <div className="text-xs text-emerald-700/60 truncate">{sub.description}</div>}
+                    </div>
+                    <ArrowRightIcon className="w-4 h-4 text-emerald-300 group-hover:text-emerald-700 group-hover:translate-x-1 transition-all shrink-0" />
+                  </Link>
+                </div>
               ))}
             </div>
           )}
@@ -395,7 +450,7 @@ export default function FolderPage() {
 
         {error && <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-lg mb-6">{error}</div>}
 
-        {/* Files — drag and drop enabled */}
+        {/* Files */}
         <div
           onDragOver={(e) => { e.preventDefault(); setDragActive(true) }}
           onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragActive(false) }}
@@ -421,9 +476,7 @@ export default function FolderPage() {
               {files.map((file) => (
                 <div key={file.id} className="bg-white rounded-xl border border-emerald-100 p-4 flex items-center justify-between hover:border-emerald-300 hover:shadow-md transition">
                   <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0 text-xl">
-                      {getFileIcon(file.file_name)}
-                    </div>
+                    <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0 text-xl">{getFileIcon(file.file_name)}</div>
                     <button onClick={() => handleView(file)} disabled={viewerLoading && viewerFile?.id === file.id} className="min-w-0 flex-1 text-left group/name">
                       <div className="font-bold text-emerald-950 group-hover/name:text-emerald-700 truncate underline-offset-2 group-hover/name:underline transition">{file.file_name}</div>
                       <div className="text-xs text-emerald-700/60 flex items-center gap-2">
@@ -436,9 +489,7 @@ export default function FolderPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={() => handleView(file)} disabled={viewerLoading && viewerFile?.id === file.id} className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-lg transition disabled:opacity-50" title="View">
-                      {viewerLoading && viewerFile?.id === file.id
-                        ? <div className="w-5 h-5 border-2 border-emerald-300 border-t-emerald-700 rounded-full animate-spin" />
-                        : <EyeIcon className="w-5 h-5" />}
+                      {viewerLoading && viewerFile?.id === file.id ? <div className="w-5 h-5 border-2 border-emerald-300 border-t-emerald-700 rounded-full animate-spin" /> : <EyeIcon className="w-5 h-5" />}
                     </button>
                     <button onClick={() => handleDownload(file)} className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-lg transition" title="Download">
                       <DownloadIcon className="w-5 h-5" />
@@ -470,9 +521,7 @@ export default function FolderPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-emerald-800 uppercase tracking-wider mb-1.5">Folder Name <span className="text-rose-600">*</span></label>
-                <input type="text" value={subfolderName}
-                  onChange={(e) => { setSubfolderName(e.target.value); setSubfolderSlug(generateSlug(e.target.value)) }}
-                  placeholder="e.g. Q1 Reports" autoFocus
+                <input type="text" value={subfolderName} onChange={(e) => { setSubfolderName(e.target.value); setSubfolderSlug(generateSlug(e.target.value)) }} placeholder="e.g. Q1 Reports" autoFocus
                   className="w-full px-3 py-2.5 border border-emerald-200 rounded-lg text-sm text-emerald-950 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition" />
               </div>
               <div>
@@ -494,6 +543,54 @@ export default function FolderPage() {
               <button type="button" onClick={() => { setShowNewSubfolder(false); setSubfolderError('') }} disabled={creatingSubfolder} className="px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-50 rounded-lg transition disabled:opacity-50">Cancel</button>
               <button type="button" onClick={handleCreateSubfolder} disabled={creatingSubfolder || !subfolderName.trim()} className="px-4 py-2 text-sm font-medium bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg transition shadow-sm disabled:opacity-50 flex items-center gap-2">
                 {creatingSubfolder ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Creating…</> : <><PlusIcon className="w-4 h-4" />Create</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Subfolder Modal */}
+      {deletingSubfolder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-emerald-950/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-emerald-100">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-11 h-11 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0"><TrashIcon className="w-5 h-5" /></div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-emerald-950 mb-1">Delete subfolder?</h3>
+                <p className="text-sm text-emerald-700/80">This will permanently delete <span className="font-medium text-emerald-950">{deletingSubfolder.name}</span> and all its files. This cannot be undone.</p>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end mt-4">
+              <button type="button" onClick={() => setDeletingSubfolder(null)} disabled={deletingSubfolderBusy} className="px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-50 rounded-lg transition disabled:opacity-50">Cancel</button>
+              <button type="button" onClick={handleDeleteSubfolder} disabled={deletingSubfolderBusy} className="px-4 py-2 text-sm font-medium bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition shadow-sm disabled:opacity-50 flex items-center gap-2">
+                {deletingSubfolderBusy ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Deleting…</> : <><TrashIcon className="w-4 h-4" />Delete</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rename Subfolder Modal */}
+      {renamingSubfolder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-emerald-950/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-emerald-100">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-emerald-950">Rename subfolder</h3>
+                <p className="text-sm text-emerald-700/70 mt-0.5">New name for <span className="font-medium text-emerald-950">{renamingSubfolder.name}</span></p>
+              </div>
+              <button type="button" onClick={() => { setRenamingSubfolder(null); setRenameValue('') }} className="p-1.5 rounded-md text-emerald-700 hover:bg-emerald-50 transition">
+                <XIcon className="w-5 h-5" />
+              </button>
+            </div>
+            <input type="text" value={renameValue} onChange={(e) => setRenameValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleRenameSubfolder()}
+              disabled={renamingBusy} autoFocus
+              className="w-full px-3 py-2.5 border border-emerald-200 rounded-lg text-sm text-emerald-950 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition mb-4" />
+            {renameError && <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3 mb-4">{renameError}</div>}
+            <div className="flex gap-2 justify-end">
+              <button type="button" onClick={() => { setRenamingSubfolder(null); setRenameValue('') }} disabled={renamingBusy} className="px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-50 rounded-lg transition disabled:opacity-50">Cancel</button>
+              <button type="button" onClick={handleRenameSubfolder} disabled={renamingBusy || !renameValue.trim()} className="px-4 py-2 text-sm font-medium bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg transition shadow-sm disabled:opacity-50 flex items-center gap-2">
+                {renamingBusy ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Renaming…</> : <><PencilIcon className="w-4 h-4" />Rename</>}
               </button>
             </div>
           </div>
