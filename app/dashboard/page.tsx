@@ -157,7 +157,7 @@ export default function DashboardPage() {
     setIsAdmin(admin); setIsEditor(editor)
 
     // Run document count, NCR stats, and certificates in parallel
-    const [, , ] = await Promise.all([
+    await Promise.all([
       (async () => {
         let docTotal = 0
         for (const tierId of TIERS) {
