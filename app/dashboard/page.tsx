@@ -55,6 +55,9 @@ const ModulesIcon = ({ className = '' }: { className?: string }) => (
 const QAIcon = ({ className = '' }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" /><rect x="9" y="3" width="6" height="4" rx="1" ry="1" /><path d="m9 12 2 2 4-4" /></svg>
 )
+const LockIcon = ({ className = '' }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+)
 
 const MODULE_ICONS: Record<string, ({ className }: { className?: string }) => React.ReactElement> = {
   folder: FolderIcon,
@@ -98,7 +101,6 @@ export default function DashboardPage() {
 
   useEffect(() => { init() }, [])
 
-  // Load modules separately — only shows modules user has access to
   useEffect(() => {
     fetch('/api/modules')
       .then(r => r.json())
@@ -152,28 +154,18 @@ export default function DashboardPage() {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) { await supabase.auth.signOut(); router.push('/login'); return }
     setUserEmail(user.email || '')
-
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
     const role = profile?.role || 'user'
     const admin = role === 'admin'
     const editor = role === 'co-admin' || (!admin && await checkIsEditor(user.email || ''))
     setIsAdmin(admin); setIsEditor(editor)
-
-    // NCR access — admin or editor only
     setHasNcrAccess(admin || editor)
-
-    // Folder access — admin or has shared folder access
     if (!admin) {
-      const { data: folderAccess } = await supabase
-        .from('folder_access')
-        .select('folder_id')
-        .eq('user_id', user.id)
-        .limit(1)
+      const { data: folderAccess } = await supabase.from('folder_access').select('folder_id').eq('user_id', user.id).limit(1)
       setHasFolderAccess((folderAccess && folderAccess.length > 0) || false)
     } else {
       setHasFolderAccess(true)
     }
-
     await Promise.all([
       (async () => {
         let docTotal = 0
@@ -198,7 +190,6 @@ export default function DashboardPage() {
       })(),
       loadCertificates(),
     ])
-
     setLoading(false)
   }
 
@@ -333,21 +324,15 @@ export default function DashboardPage() {
 
           <nav className="flex-1 p-3 overflow-y-auto">
             <div className="text-[10px] font-semibold text-emerald-400/80 uppercase tracking-wider px-3 py-2">Modules</div>
-
-            {/* Home — always visible */}
             <div className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 bg-emerald-50 text-emerald-950 shadow-sm">
               <div className="w-8 h-8 rounded-md bg-emerald-600 text-white flex items-center justify-center shrink-0"><HomeIcon className="w-4 h-4" /></div>
               <span className="text-sm font-medium">Home</span>
             </div>
-
-            {/* Document Library — always visible */}
             <Link href="/documents" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 hover:bg-emerald-800/50 text-emerald-100 transition-all">
               <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0"><FolderIcon className="w-4 h-4" /></div>
               <span className="text-sm font-medium">Document Library</span>
               <span className="ml-auto text-xs font-medium tabular-nums text-emerald-400/60">{documentCount}</span>
             </Link>
-
-            {/* NCR — admin and editors only */}
             {hasNcrAccess && (
               <Link href="/ncr" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 hover:bg-emerald-800/50 text-emerald-100 transition-all">
                 <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0"><AlertIcon className="w-4 h-4" /></div>
@@ -355,16 +340,12 @@ export default function DashboardPage() {
                 <span className="ml-auto text-xs font-medium tabular-nums text-emerald-400/60">{ncrStats.total}</span>
               </Link>
             )}
-
-            {/* Quality Assurance — admin or shared folder access */}
             {(isAdmin || hasFolderAccess) && (
               <Link href="/folders" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 hover:bg-emerald-800/50 text-emerald-100 transition-all">
                 <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0"><QAIcon className="w-4 h-4" /></div>
                 <span className="text-sm font-medium">Quality Assurance</span>
               </Link>
             )}
-
-            {/* Custom modules — only those shared with user (API filters via RLS) */}
             {dynamicModules.length > 0 && (
               <>
                 <div className="text-[10px] font-semibold text-emerald-400/80 uppercase tracking-wider px-3 py-2 mt-2">Custom</div>
@@ -379,8 +360,6 @@ export default function DashboardPage() {
                 })}
               </>
             )}
-
-            {/* Admin section — admin only */}
             {isAdmin && (
               <>
                 <div className="text-[10px] font-semibold text-emerald-400/80 uppercase tracking-wider px-3 py-2 mt-2">Admin</div>
@@ -393,6 +372,11 @@ export default function DashboardPage() {
           </nav>
 
           <div className="p-3 border-t border-emerald-800/60">
+            {/* Change Password link */}
+            <Link href="/change-password" className="flex items-center gap-2 px-3 py-2 text-xs text-emerald-400 hover:text-white hover:bg-emerald-800/50 rounded-lg transition mb-2">
+              <LockIcon className="w-3.5 h-3.5" />
+              Change Password
+            </Link>
             <div className="flex items-center gap-3 p-2 rounded-lg">
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-300 to-emerald-500 flex items-center justify-center text-emerald-950 font-semibold text-sm">
                 {userEmail.charAt(0).toUpperCase() || 'U'}
@@ -444,7 +428,6 @@ export default function DashboardPage() {
                   <span className="text-sm text-emerald-700/70">{documentCount === 1 ? 'document' : 'documents'} across 5 tiers</span>
                 </div>
               </Link>
-
               {hasNcrAccess && (
                 <Link href="/ncr" className="bg-white rounded-2xl border border-emerald-100 p-8 text-left transition-all hover:border-emerald-300 hover:shadow-lg group block">
                   <div className="flex items-start justify-between mb-6">
