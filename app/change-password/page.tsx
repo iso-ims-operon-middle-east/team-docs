@@ -42,11 +42,11 @@ export default function ChangePasswordPage() {
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
       <div className="w-full max-w-md">
-        <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-emerald-700 hover:text-emerald-900 mb-8 transition">
+        <Link href="/login" className="inline-flex items-center gap-2 text-sm text-emerald-700 hover:text-emerald-900 mb-8 transition">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
             <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
           </svg>
-          Back to Dashboard
+          Back to Login
         </Link>
 
         <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm p-8">
