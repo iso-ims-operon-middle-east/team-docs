@@ -81,6 +81,8 @@ export default function DashboardPage() {
   const [certificates, setCertificates] = useState<Certificate[]>([])
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({})
   const [dynamicModules, setDynamicModules] = useState<DynamicModule[]>([])
+  const [hasNcrAccess, setHasNcrAccess] = useState(false)
+  const [hasFolderAccess, setHasFolderAccess] = useState(false)
   const [showUpload, setShowUpload] = useState(false)
   const [certName, setCertName] = useState('')
   const [certDesc, setCertDesc] = useState('')
@@ -96,6 +98,7 @@ export default function DashboardPage() {
 
   useEffect(() => { init() }, [])
 
+  // Load modules separately — only shows modules user has access to
   useEffect(() => {
     fetch('/api/modules')
       .then(r => r.json())
@@ -149,11 +152,27 @@ export default function DashboardPage() {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) { await supabase.auth.signOut(); router.push('/login'); return }
     setUserEmail(user.email || '')
+
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
     const role = profile?.role || 'user'
     const admin = role === 'admin'
     const editor = role === 'co-admin' || (!admin && await checkIsEditor(user.email || ''))
     setIsAdmin(admin); setIsEditor(editor)
+
+    // NCR access — admin or editor only
+    setHasNcrAccess(admin || editor)
+
+    // Folder access — admin or has shared folder access
+    if (!admin) {
+      const { data: folderAccess } = await supabase
+        .from('folder_access')
+        .select('folder_id')
+        .eq('user_id', user.id)
+        .limit(1)
+      setHasFolderAccess((folderAccess && folderAccess.length > 0) || false)
+    } else {
+      setHasFolderAccess(true)
+    }
 
     await Promise.all([
       (async () => {
@@ -172,8 +191,10 @@ export default function DashboardPage() {
         setDocumentCount(docTotal)
       })(),
       (async () => {
-        const { data: ncrs } = await supabase.from('ncrs').select('status')
-        if (ncrs) setNcrStats({ total: ncrs.length, open: ncrs.filter(n => n.status === 'Open').length, inProgress: ncrs.filter(n => n.status === 'In Progress').length })
+        if (admin || editor) {
+          const { data: ncrs } = await supabase.from('ncrs').select('status')
+          if (ncrs) setNcrStats({ total: ncrs.length, open: ncrs.filter(n => n.status === 'Open').length, inProgress: ncrs.filter(n => n.status === 'In Progress').length })
+        }
       })(),
       loadCertificates(),
     ])
@@ -256,7 +277,7 @@ export default function DashboardPage() {
 
   const roleLabel = isAdmin ? 'Administrator' : isEditor ? 'Editor' : 'Viewer'
   const accessLabel = isAdmin ? 'Admin access' : isEditor ? 'Edit access' : 'Viewer access'
-  const roleDescription = isAdmin ? 'You have full access — upload documents, edit and delete NCRs.' : isEditor ? 'You can view and download documents, and create or edit NCRs.' : 'You can view and download documents, and view NCR reports.'
+  const roleDescription = isAdmin ? 'You have full access — upload documents, edit and delete NCRs.' : isEditor ? 'You can view and download documents, and create or edit NCRs.' : 'You can view and download documents and any shared content.'
 
   if (loading) {
     return (
@@ -300,8 +321,6 @@ export default function DashboardPage() {
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
       <div className="flex min-h-screen">
         <aside className="w-72 bg-emerald-900 text-emerald-50 flex flex-col">
-
-          {/* ✅ CHANGED: href="/" → href="/about" */}
           <Link href="/about" className="p-6 border-b border-emerald-800/60 hover:bg-emerald-800/30 transition-all block">
             <div className="flex items-center gap-3">
               <img src="/operon-logo-green.png" alt="Operon" className="w-9 h-9 rounded-lg object-contain bg-white p-1" />
@@ -314,25 +333,38 @@ export default function DashboardPage() {
 
           <nav className="flex-1 p-3 overflow-y-auto">
             <div className="text-[10px] font-semibold text-emerald-400/80 uppercase tracking-wider px-3 py-2">Modules</div>
+
+            {/* Home — always visible */}
             <div className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 bg-emerald-50 text-emerald-950 shadow-sm">
               <div className="w-8 h-8 rounded-md bg-emerald-600 text-white flex items-center justify-center shrink-0"><HomeIcon className="w-4 h-4" /></div>
               <span className="text-sm font-medium">Home</span>
             </div>
+
+            {/* Document Library — always visible */}
             <Link href="/documents" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 hover:bg-emerald-800/50 text-emerald-100 transition-all">
               <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0"><FolderIcon className="w-4 h-4" /></div>
               <span className="text-sm font-medium">Document Library</span>
               <span className="ml-auto text-xs font-medium tabular-nums text-emerald-400/60">{documentCount}</span>
             </Link>
-            <Link href="/ncr" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 hover:bg-emerald-800/50 text-emerald-100 transition-all">
-              <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0"><AlertIcon className="w-4 h-4" /></div>
-              <span className="text-sm font-medium">Non-Conformance</span>
-              <span className="ml-auto text-xs font-medium tabular-nums text-emerald-400/60">{ncrStats.total}</span>
-            </Link>
-            <Link href="/folders" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 hover:bg-emerald-800/50 text-emerald-100 transition-all">
-              <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0"><QAIcon className="w-4 h-4" /></div>
-              <span className="text-sm font-medium">Quality Assurance</span>
-            </Link>
 
+            {/* NCR — admin and editors only */}
+            {hasNcrAccess && (
+              <Link href="/ncr" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 hover:bg-emerald-800/50 text-emerald-100 transition-all">
+                <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0"><AlertIcon className="w-4 h-4" /></div>
+                <span className="text-sm font-medium">Non-Conformance</span>
+                <span className="ml-auto text-xs font-medium tabular-nums text-emerald-400/60">{ncrStats.total}</span>
+              </Link>
+            )}
+
+            {/* Quality Assurance — admin or shared folder access */}
+            {(isAdmin || hasFolderAccess) && (
+              <Link href="/folders" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 hover:bg-emerald-800/50 text-emerald-100 transition-all">
+                <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0"><QAIcon className="w-4 h-4" /></div>
+                <span className="text-sm font-medium">Quality Assurance</span>
+              </Link>
+            )}
+
+            {/* Custom modules — only those shared with user (API filters via RLS) */}
             {dynamicModules.length > 0 && (
               <>
                 <div className="text-[10px] font-semibold text-emerald-400/80 uppercase tracking-wider px-3 py-2 mt-2">Custom</div>
@@ -348,11 +380,16 @@ export default function DashboardPage() {
               </>
             )}
 
-            <div className="text-[10px] font-semibold text-emerald-400/80 uppercase tracking-wider px-3 py-2 mt-2">Admin</div>
-            <Link href="/modules" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 hover:bg-emerald-800/50 text-emerald-100 transition-all">
-              <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0"><ModulesIcon className="w-4 h-4" /></div>
-              <span className="text-sm font-medium">Manage Modules</span>
-            </Link>
+            {/* Admin section — admin only */}
+            {isAdmin && (
+              <>
+                <div className="text-[10px] font-semibold text-emerald-400/80 uppercase tracking-wider px-3 py-2 mt-2">Admin</div>
+                <Link href="/modules" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left mb-0.5 hover:bg-emerald-800/50 text-emerald-100 transition-all">
+                  <div className="w-8 h-8 rounded-md bg-emerald-800 text-emerald-300 flex items-center justify-center shrink-0"><ModulesIcon className="w-4 h-4" /></div>
+                  <span className="text-sm font-medium">Manage Modules</span>
+                </Link>
+              </>
+            )}
           </nav>
 
           <div className="p-3 border-t border-emerald-800/60">
@@ -407,19 +444,22 @@ export default function DashboardPage() {
                   <span className="text-sm text-emerald-700/70">{documentCount === 1 ? 'document' : 'documents'} across 5 tiers</span>
                 </div>
               </Link>
-              <Link href="/ncr" className="bg-white rounded-2xl border border-emerald-100 p-8 text-left transition-all hover:border-emerald-300 hover:shadow-lg group block">
-                <div className="flex items-start justify-between mb-6">
-                  <div className="w-14 h-14 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center"><AlertIcon className="w-7 h-7" /></div>
-                  <ArrowRightIcon className="w-5 h-5 text-emerald-300 group-hover:text-emerald-700 group-hover:translate-x-1 transition-all" />
-                </div>
-                <h2 className="text-xl font-bold text-emerald-950 mb-2">Non-Conformance Reports</h2>
-                <p className="text-sm text-emerald-700/70 mb-6 leading-relaxed">Track, manage, and resolve non-conformances across the organization.</p>
-                <div className="flex items-baseline gap-4 pt-4 border-t border-emerald-50 flex-wrap">
-                  <div className="flex items-baseline gap-1.5"><span className="text-3xl font-bold tabular-nums text-emerald-700">{ncrStats.total}</span><span className="text-xs text-emerald-700/70">total</span></div>
-                  <div className="flex items-center gap-1.5 text-xs"><span className="w-1.5 h-1.5 rounded-full bg-rose-500" /><span className="text-emerald-700/70">{ncrStats.open} open</span></div>
-                  <div className="flex items-center gap-1.5 text-xs"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" /><span className="text-emerald-700/70">{ncrStats.inProgress} in progress</span></div>
-                </div>
-              </Link>
+
+              {hasNcrAccess && (
+                <Link href="/ncr" className="bg-white rounded-2xl border border-emerald-100 p-8 text-left transition-all hover:border-emerald-300 hover:shadow-lg group block">
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="w-14 h-14 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center"><AlertIcon className="w-7 h-7" /></div>
+                    <ArrowRightIcon className="w-5 h-5 text-emerald-300 group-hover:text-emerald-700 group-hover:translate-x-1 transition-all" />
+                  </div>
+                  <h2 className="text-xl font-bold text-emerald-950 mb-2">Non-Conformance Reports</h2>
+                  <p className="text-sm text-emerald-700/70 mb-6 leading-relaxed">Track, manage, and resolve non-conformances across the organization.</p>
+                  <div className="flex items-baseline gap-4 pt-4 border-t border-emerald-50 flex-wrap">
+                    <div className="flex items-baseline gap-1.5"><span className="text-3xl font-bold tabular-nums text-emerald-700">{ncrStats.total}</span><span className="text-xs text-emerald-700/70">total</span></div>
+                    <div className="flex items-center gap-1.5 text-xs"><span className="w-1.5 h-1.5 rounded-full bg-rose-500" /><span className="text-emerald-700/70">{ncrStats.open} open</span></div>
+                    <div className="flex items-center gap-1.5 text-xs"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" /><span className="text-emerald-700/70">{ncrStats.inProgress} in progress</span></div>
+                  </div>
+                </Link>
+              )}
             </div>
 
             <div className="mt-12 max-w-6xl">
@@ -525,7 +565,7 @@ export default function DashboardPage() {
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-emerald-100">
             <div className="flex items-start gap-4 mb-4">
               <div className="w-11 h-11 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0"><TrashIcon className="w-5 h-5" /></div>
-              <div className="flex-1 min-w-0"><h3 className="text-lg font-bold text-emerald-950 mb-1">Delete certificate?</h3><p className="text-sm text-emerald-700/80">This will permanently delete <span className="font-medium text-emerald-950">{deletingCert.name}</span> and its preview. This action cannot be undone.</p></div>
+              <div className="flex-1 min-w-0"><h3 className="text-lg font-bold text-emerald-950 mb-1">Delete certificate?</h3><p className="text-sm text-emerald-700/80">This will permanently delete <span className="font-medium text-emerald-950">{deletingCert.name}</span> and its preview.</p></div>
             </div>
             <div className="flex gap-2 justify-end mt-6">
               <button type="button" onClick={() => setDeletingCert(null)} disabled={deleting} className="px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-50 rounded-lg transition disabled:opacity-50">Cancel</button>

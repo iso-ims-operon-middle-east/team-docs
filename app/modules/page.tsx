@@ -175,7 +175,12 @@ export default function ModulesPage() {
         <div className="flex items-center justify-between mb-10">
           <div>
             <div className="text-xs font-mono text-emerald-700/70 mb-2" style={{ fontFamily: "'JetBrains Mono', monospace" }}>MODULES</div>
-            <h1 className="text-4xl font-bold text-emerald-950">⚙️ Manage Modules</h1>
+            <h1 className="text-4xl font-bold text-emerald-950 flex items-center gap-3">
+  <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>
+  </div>
+  Manage Modules
+</h1>
             <p className="text-sm text-emerald-700/70 mt-2">Create and manage sidebar modules with custom access control</p>
           </div>
           <button type="button" onClick={() => { setShowCreate(true); setError('') }} className="flex items-center gap-2 px-6 py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg shadow-md transition-all hover:shadow-lg">
